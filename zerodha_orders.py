@@ -181,7 +181,7 @@ def scheduler():
     #replace the timer with scheduler
     schedule.every().day.at("09:13").do(start_orb)
     schedule.every().day.at("09:15").do(orb_record)
-    schedule.every().day.at("09:20").do(orb_breakout)
+    schedule.every().day.at("09:26").do(orb_breakout)
     while(True):
         schedule.run_pending()
         time.sleep(1)
