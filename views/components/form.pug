@@ -1,0 +1,14 @@
+mixin form(name, form, click_script)
+    - var click_script = (click_script)? click_script: 'formSubmitted('+name+')'
+    form(id=name)
+        each row in form.data
+            p.form-row(class=['flex-row'])
+                if row.label
+                    label.form-label=row.label
+                input.form-value(name=row.name, type=row.type, value=row.value)
+        p.form-submit(align="right")
+            input.form-submit(type="button" onclick=click_script value=form.config.submit.value)
+
+mixin token_field(name, addCallback, deleteCallback)
+    input(name=name type="text" onkeypress='tokenFieldKeyPress(this,'+addCallback+','+deleteCallback+')' style={width: '95%', padding: '4px'})
+    .token_field--display(style=style, id=name)

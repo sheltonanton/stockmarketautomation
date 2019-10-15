@@ -1,0 +1,44 @@
+.card-container {
+    position: relative;
+    width: 100%;
+}
+.card {
+    position: relative;
+}
+.card-header {
+    padding: 4px;
+    background-color: #eeeeee;
+    margin-bottom: 6px;
+}
+
+.form-row {}
+
+.form-label {
+    width: 100px;
+}
+
+.form-value {
+    flex: 1 1 auto;
+}
+
+.token_field--display{
+    height: 200px;
+    border: 1px solid #eee;
+    margin-top: 8px;
+    overflow-y: auto;
+}
+.token_field--display p {
+    margin: 0px;
+    padding: 4px;
+}
+.token_field--entry:hover,.token_field--display p:hover {
+    background-color: #eee;
+}
+
+.token_field--ent {
+    width: 90%;
+    display: inline-block;
+}
+.token_field--icon {
+    width: 10%;
+}

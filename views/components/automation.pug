@@ -1,0 +1,25 @@
+include ../components/form.pug
+
+mixin automation(data)
+    .flex-row(style={height: '100%'})
+        .automation-buttons
+            .flex-column
+                button.automation-button(disabled=automation_flag, onclick='auto_start_process()') Start Process
+                button.automation-button(disabled=automation_flag, onclick="auto_subscribe('automation-input')") Subscribe
+                button.automation-button(disabled=automation_flag, onclick='auto_stop_process()') Stop Process
+                button.automation-button(disabled=automation_flag, onclick='auto_force_stop()') Force Stop
+        .flex-column
+            .automation-display(id="automation-display" style={'height':'196px'})
+            input.automation-input(type="text" id="automation-input" style={'height':'27px'})
+
+mixin user_manager()
+    button(onclick='ms_toggleUserView("ms_showUsers")' style={margin: '2px'}) Show Users
+    button(onclick='ms_toggleUserView("ms_addUser")'  style={margin: '2px'}) Add User
+    #ms_showUsers(class=['ms_showUsers'])
+    script(type="text/javascript") window.addEventListener('load',function(){ms_showUsers('ms_showUsers');});
+    #ms_addUser(class=['ms_addUser'], style={display: 'none'})
+        +form('ms_form_addUser', addUser, 'ms_addUser(ms_form_addUser)')
+
+mixin isloggedin()
+    .flex-row
+        #form_loggedin(style={color: 'red'} onload) Not loggedin

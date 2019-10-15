@@ -1,0 +1,4 @@
+mixin onloadstart(func)
+    -
+        var s = `window.addEventListener('load',function(){${func}});`
+    script(type='text/javascript')!= s

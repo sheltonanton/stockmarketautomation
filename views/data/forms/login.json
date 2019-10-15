@@ -1,0 +1,23 @@
+{
+    "config": {
+        "submit": {
+            "value": "Log in"
+        }
+    },
+    "data": [{
+        "label": "User ID",
+        "name": "userid",
+        "type": "text",
+        "value": "IV8690"
+    }, {
+        "label": "Password",
+        "name": "password",
+        "type": "password",
+        "value": "demolishMan@1995"
+    }, {
+        "label": "Pin",
+        "name": "pin",
+        "type": "password",
+        "value": "790315"
+    }]
+}

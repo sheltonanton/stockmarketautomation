@@ -1,0 +1,42 @@
+.automation-buttons {
+
+}
+.automation-button {
+    margin-bottom: 6px;
+}
+.automation-display {
+    width: 522px;
+    height: 152px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    padding: 4px;
+    margin-left: 4px;
+}
+    .automation-display p {
+        margin: 2px;
+        padding: 2px;
+    }
+.automation-input {
+    border: 1px solid #ddd;
+    margin-top: 4px;
+    margin-left: 4px;
+}
+.ms_showUsers {
+    font-family: "Lucida Console",Monaco,monospace;
+    font-size: 15px;
+    padding-top: 8px;
+    height: 72%;
+    overflow-y: auto;
+}
+.ms_showUsers p {
+    cursor: pointer;
+    margin: 0px;
+    padding: 6px;
+}
+.ms_showUsers p:hover {
+    background-color: #fafafa;
+}
+.ms_addUser {
+    height: 72%;
+    padding-top: 8px;
+}

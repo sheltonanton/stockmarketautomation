@@ -1,0 +1,21 @@
+mixin cardcontainer(title)
+    .card-container(class=['flex-row','flex-wrap'])
+        block
+
+mixin card(title, s, footer)
+    -
+        var style = {
+            border: '1px solid #ccc', 
+            ['border-radius']: '5px',
+            padding: '8px', 
+            margin: '8px'
+        }
+        if(s && s.width) style.width = s.width
+        if(s && s.height) style.height = s.height
+    .card(style=style)
+        if title
+            .card-header=title
+        if block
+            block
+        if footer
+            .card-footer=footer

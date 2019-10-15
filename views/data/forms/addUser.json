@@ -1,0 +1,20 @@
+{
+    "config": {
+        "submit": {
+            "value": "Add"
+        }
+    },
+    "data": [{
+        "label": "User ID",
+        "name": "userId",
+        "type": "text"
+    }, {
+        "label": "Password",
+        "name": "password",
+        "type": "text"
+    }, {
+        "label": "Pin",
+        "name": "pin",
+        "type": "text"
+    }]
+}
