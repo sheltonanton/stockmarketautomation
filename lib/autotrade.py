@@ -187,21 +187,19 @@ class Strategy:
         pass
 
 class Candles:
-    def __init__(self, period=5):
+    def __init__(self):
         self.candles = []
-        self.period = period
         self.current_range = []
     
-    def run_candling(self, timeperiod, start_price):
+    def run_candling(self, timeperiod, callback):
         time.sleep(timeperiod)
-        self.save_prev_candle()
+        prev_candle = self.save_prev_candle()
+        callback(self, prev_candle)
     
-    def start_candling(self, timeperiod=0, start_price=0):
+    def start_candling(self, timeperiod=60, callback=lambda x,y:x):
         self.timeperiod = timeperiod
-        if(start_price): 
-            self.current_range.append(start_price)
-        # thread = Thread(target=self.run_candling, args=(timeperiod, start_price))
-        # thread.start()
+        thread = Thread(target=self.run_candling, args=(timeperiod, callback))
+        thread.start()
         
     def get_candles(self, start_index=0, end_index=0):
         if(end_index == 0):
@@ -254,23 +252,21 @@ class Candles:
         return candles
 
 class Collector:
-    def __init__(self, tokens):
+    def __init__(self, option):
         self.stocks = {}
-        self.tokens = tokens
+        self.option = option
 
     def start_collector(self):
-        tokens = self.tokens
-        
-        for token in tokens:
+        for key in self.options:
             candles = Candles()
-            self.stocks[token] = {
+            self.stocks[key] = {
                 'candles': candles
             }
 
     def collect_price(self, data):
         for d in data:
-            token = self.stocks[int(d['token'])]
-            token['candles'].add_price(float(d['lastPrice']))
+            stock = self.stocks[d.key]
+            stock['candles'].add_price(d.price)
 
     def get_partial_candles(self):
         candles = {}

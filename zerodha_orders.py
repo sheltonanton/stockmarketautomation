@@ -180,9 +180,9 @@ def orb_func(data):
 ####------------------ END OF SECTION
 def scheduler():
     global dataFeed
-    global orb_breakout
-    orb = OpenRangeBreakout(dataFeed, orb_breakout)
-    orb.start()
+    global orb_tokens
+    orb = OpenRangeBreakout(orb_tokens)
+    dataFeed.attach(orb)
     #replace the timer with scheduler
     schedule.every().day.at("09:13").do(start_orb)
     schedule.every().day.at("09:15").do(orb_record)
