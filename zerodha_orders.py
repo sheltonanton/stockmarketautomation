@@ -14,10 +14,11 @@ from flask_restful import Resource, Api
 
 sys.path.append("D:\\programs\\nseTools\\zerodha\\lib")
 from autotrade import History, Collector
-from orbreakout import OpenRangeBreakout
 from pipe import WebSocketPipe
+from open_range_breakout import OpenRangeBreakout
+from data_feed import DataFeed
 
-
+dataFeed = DataFeed()
 process_args = ['C:\\Program Files\\nodejs\\node.exe','D:\\programs\\nseTools\\zerodha\\zerodha_socket.js']
 urls = {
     'start_process': 'http://localhost:3000/auto/start_process',
@@ -178,6 +179,10 @@ def orb_func(data):
 
 ####------------------ END OF SECTION
 def scheduler():
+    global dataFeed
+    global orb_breakout
+    orb = OpenRangeBreakout(dataFeed, orb_breakout)
+    orb.start()
     #replace the timer with scheduler
     schedule.every().day.at("09:13").do(start_orb)
     schedule.every().day.at("09:15").do(orb_record)
@@ -268,17 +273,14 @@ def write_to_socket(pipe, data):
 def print_socket_data(data):
     pprint(data)
 
-def web_socket_callbacks(data):
-    # print_socket_data(data)
-    orb_func(data)
-
 def web_socket(pipe):
+    global dataFeed
      #record the live data for the process
     while(True):
         # try:
         data = pipe.read().decode('utf-8')
         data = json.loads(data)
-        web_socket_callbacks(data)
+        dataFeed.notify(data)
         if(data['status'] == 'exit'):
             write_to_node({
                 'handler': 'end_automation',

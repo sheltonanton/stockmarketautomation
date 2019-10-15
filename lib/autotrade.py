@@ -190,7 +190,6 @@ class Candles:
     def __init__(self, period=5):
         self.candles = []
         self.period = period
-        self.index = 0
         self.current_range = []
     
     def run_candling(self, timeperiod, start_price):
@@ -214,7 +213,6 @@ class Candles:
     
     def save_prev_candle(self):
         try:
-            self.index = 0
             current_candle = {}
             current_candle['high'] = max(self.current_range)
             current_candle['low'] = min(self.current_range)
@@ -229,9 +227,6 @@ class Candles:
         
     def add_price(self, price):
         self.current_range.append(price)
-        self.index = self.index + 1
-        if(self.index == self.period and self.timeperiod == 0):
-            self.save_prev_candle()
     
     def get_candles_count(self):
         return len(self.candles)
@@ -259,18 +254,15 @@ class Candles:
         return candles
 
 class Collector:
-    def __init__(self, tokens, timeperiod=60):
+    def __init__(self, tokens):
         self.stocks = {}
         self.tokens = tokens
-        self.timeperiod = timeperiod
 
     def start_collector(self):
         tokens = self.tokens
-        timeperiod = self.timeperiod
         
         for token in tokens:
             candles = Candles()
-            candles.start_candling(timeperiod=timeperiod)
             self.stocks[token] = {
                 'candles': candles
             }
