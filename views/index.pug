@@ -45,5 +45,8 @@ block content
       //-   img(src="/images/pokemon.png" id="fun_image" style={position: 'absolute', ['z-index']: 1, cursor: 'pointer'})
       //-   script(type="text/javascript") window.addEventListener('load', function(){funImageInit()})
     +card('Open Range Breakout (Table)', {width: '966px', height: '270px'})
-      table#order_table
-      +onloadstart("order_get_data('order_table')") 
+      .flex-row
+        div.order_table
+          table#order_table
+        div.order_result(id='order_result')
+        +onloadstart("order_get_data('order_table','order_result')") 

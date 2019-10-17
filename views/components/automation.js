@@ -89,12 +89,35 @@ async function auto_subscribe(input){
 }
 
 /* ORDER DATA */
-async function order_get_data(table){
-    data = await send_api('/order/bo','get')
+async function order_get_data(table, resDiv){
+    let data = await send_api('/order/bo','get')
     data = data['data']
-    columns = ['stock','type','quantity','entryTime','entryPrice']
-    columns = columns.map(column => {return {data: column,title: column}})
-    $(`#${table}`).DataTable({data,columns, paging: false,scrollY: 150})
+    let columns = ['stock','type','quantity','entryPrice','exitPrice']
+    columns = columns.map(column => {return {data: column, title: column}})
+    $(`#${table}`).DataTable({data,columns, paging: false, scrollY: 150, autoWidth: true})
+
+    let total_profit = 0
+    let total_loss = 0
+    let invested = 0
+    let traded = 0
+    data.forEach(d => {
+        invested = invested + parseFloat(d['entryPrice']) * parseInt(d['quantity'])
+        traded = traded + (parseFloat(d['entryPrice']) + parseFloat(d['exitPrice'])) * parseInt(d['quantity'])
+        let diff = (parseFloat(d['exitPrice']) - parseFloat(d['entryPrice'])) * ((d['type'] == 'buy')? 1: -1)
+        let r = parseInt(d['quantity']) * diff
+        if(r < 0){total_loss+=r}else{total_profit+=r}
+    })
+    let net = total_profit + total_loss
+    let d = document.getElementById(resDiv)
+    d.innerHTML = `
+        <table style="width:75%;margin:60px auto;" cellpadding="3">
+            <tr><td>Total Profit</td><td>: ${total_profit.toFixed(2)}</td></tr>
+            <tr><td>Total Loss</td><td>: ${-total_loss.toFixed(2)}</td></tr>
+            <tr><td>Net</td><td>: ${net.toFixed(2)}</td></tr>
+            <tr><td>Inv. Amt</td><td>: ${invested.toFixed(0)}</td></tr>
+            <tr><td>Traded Amt</td><td>: ${traded.toFixed(0)}</td></tr>
+        </table>
+    `
 }
 
 /* OPEN RANGE BREAKOUT */

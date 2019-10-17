@@ -9,6 +9,7 @@ class Subject:
     def detach(self, observer):
         '''Detach an observer from the subject '''
         self.observers.remove(observer)
+        observer.removed()
 
     def notify(self):
         ''' Notify all the observers in the subject '''
@@ -18,4 +19,8 @@ class Subject:
 class Observer:
     def update(self, subject):
         ''' Receive an update from the subject '''
+        pass
+
+    def removed(self):
+        '''Called prior to removing it from the listener '''
         pass

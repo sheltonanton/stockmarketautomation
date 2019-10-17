@@ -1,1 +1,4 @@
 node_modules/
+output/
+lib/__pycache__/
+__pycache__/

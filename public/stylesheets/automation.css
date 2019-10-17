@@ -40,3 +40,9 @@
     height: 72%;
     padding-top: 8px;
 }
+.order_table {
+    width: 75%;
+}
+.order_result {
+    width: 25%;
+}

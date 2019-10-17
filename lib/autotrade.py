@@ -210,18 +210,14 @@ class Candles:
         return self.candles[-count:]
     
     def save_prev_candle(self):
-        try:
-            current_candle = {}
-            current_candle['high'] = max(self.current_range)
-            current_candle['low'] = min(self.current_range)
-            current_candle['open'] = self.current_range[0]
-            current_candle['close'] = self.current_range.pop()
-            self.candles.append(current_candle)
-            self.current_range = []
-            return current_candle
-        except ValueError as err:
-            print(err)
-            return 'error'
+        current_candle = {}
+        current_candle['high'] = max(self.current_range)
+        current_candle['low'] = min(self.current_range)
+        current_candle['open'] = self.current_range[0]
+        current_candle['close'] = self.current_range.pop()
+        self.candles.append(current_candle)
+        self.current_range = []
+        return current_candle
         
     def add_price(self, price):
         self.current_range.append(price)

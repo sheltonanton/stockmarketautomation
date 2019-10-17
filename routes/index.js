@@ -188,6 +188,7 @@ async function z_login(userid, password, pin){
   } = response.data;
   response = await zt.tfa(user_id, request_id); //two factor authentication
   z = zt;
+  express.zt = zt
 }
 
 Property.findOne({

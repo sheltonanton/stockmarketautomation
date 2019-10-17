@@ -7,7 +7,8 @@ const OrderSchema = mongoose.Schema({
     entryTime: String,
     entryPrice: Number,
     exitTime: String,
-    exitPrice: Number
+    exitPrice: Number,
+    comments: String
 })
 
 module.exports = mongoose.model('Order', OrderSchema);

@@ -4,10 +4,13 @@ const Order = require('../models/order')
 
 /* TAKING AN ORDER */
 router.post('/bo', function(req, res, next){
-    let data = req.body;
-    console.log(data['bo'])
-    Order.create(data['bo']).then((r, err) => {
-        express.ws_write(data['bo'], null, 'orderCreated')
+    let data = req.body['bo'];
+    if(data['original']){
+        response = express.zt.placeBO(data['stock'], data['type'], data['quantity'], 0.7, 1.0, data['entryPrice'])
+    }
+    console.log(data)
+    Order.create(data).then((r, err) => {
+        express.ws_write(data, null, 'orderCreated')
         res.send({
             status: 'success',
             data: r
