@@ -119,10 +119,10 @@ class Phase:
                 otype = None
                 if(price > (candle['high'] + self.noise_factor)):
                     candle['dir'] = 'up'
-                    otype = "buy"
+                    otype = "BUY"
                 if(price < (candle['low'] - self.noise_factor)):
                     candle['dir'] = 'down'
-                    otype = "sell"
+                    otype = "SELL"
                     
                 if(otype is not None):
                     candle['enter'] = price

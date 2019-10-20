@@ -51,6 +51,7 @@ try{
     async function placeBO(tradingsymbol, transaction_type, quantity, squareoff, stoploss, price){
         try {
             var data = {tradingsymbol, transaction_type, quantity, price, squareoff, stoploss}
+            data.order_type = "LIMIT"
             if(!price) data.order_type = "MARKET"
             data = {
                 ...BO_JSON,

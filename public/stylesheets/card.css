@@ -4,6 +4,7 @@
 }
 .card {
     position: relative;
+    background-color: white;
 }
 .card-header {
     padding: 4px;

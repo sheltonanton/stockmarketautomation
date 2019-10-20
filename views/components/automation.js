@@ -101,11 +101,13 @@ async function order_get_data(table, resDiv){
     let invested = 0
     let traded = 0
     data.forEach(d => {
-        invested = invested + parseFloat(d['entryPrice']) * parseInt(d['quantity'])
-        traded = traded + (parseFloat(d['entryPrice']) + parseFloat(d['exitPrice'])) * parseInt(d['quantity'])
-        let diff = (parseFloat(d['exitPrice']) - parseFloat(d['entryPrice'])) * ((d['type'] == 'buy')? 1: -1)
-        let r = parseInt(d['quantity']) * diff
-        if(r < 0){total_loss+=r}else{total_profit+=r}
+        if(d['exitPrice']){
+            invested = invested + parseFloat(d['entryPrice']) * parseInt(d['quantity'])
+            traded = traded + (parseFloat(d['entryPrice']) + parseFloat(d['exitPrice'])) * parseInt(d['quantity'])
+            let diff = (parseFloat(d['exitPrice']) - parseFloat(d['entryPrice'])) * ((d['type'] == 'buy')? 1: -1)
+            let r = parseInt(d['quantity']) * diff
+            if(r < 0){total_loss+=r}else{total_profit+=r}
+        }
     })
     let net = total_profit + total_loss
     let d = document.getElementById(resDiv)
