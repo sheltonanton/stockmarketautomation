@@ -6,7 +6,7 @@ const Order = require('../models/order')
 router.post('/bo', function(req, res, next){
     let data = req.body['bo'];
     if(data['original']){
-        response = express.zt.placeBO(data['stock'], data['type'], data['quantity'], 0.7, 1.0, data['entryPrice'])
+        response = express.zt.placeBO(data['stock'], data['type'], data['quantity'], 0.7, 1.0, data['price'])
     }
     console.log(data)
     Order.create(data).then((r, err) => {
@@ -56,5 +56,18 @@ router.put('/bo', function(req, res, next){
         }
     })
 })
+
+
+/* EXITING AN ORDER */
+router.delete('/bo', function(req, res, next){
+    let data = req.body['bo'];
+    //deleting the zerodha order
+})
+/* LIMIT ORDER */
+router.post('/regular', function(req, res, next){
+    let data = req.body['regular']
+    console.log(data)
+})
+
 
 module.exports = router

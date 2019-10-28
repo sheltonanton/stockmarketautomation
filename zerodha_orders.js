@@ -5,11 +5,18 @@ const KITE_HOME = 'http://kite.zerodha.com'
 const LOGIN = '/api/login'
 const TFA = '/api/twofa'
 const BRACKET_ORDER = 'oms/orders/bo'
+const LIMIT_ORDER = 'oms/orders/regular'
 
 const URL_ENCODED = { 'Content-Type': 'application/x-www-form-urlencoded' }
 const BO_JSON = {quantity:0, price:0, stoploss:0, trailing_stoploss:0, 
                 exchange: "NSE",tradingsymbol: "",transaction_type: "",order_type: "LIMIT", product: "MIS",validity: "DAY",disclosed_quantity:0,
                 trigger_price: 0, squareoff:1,variety:"bo",user_id:""}
+
+const LI_JSON = {
+                  quantity:0, price:0, stoploss:0, trailing_stoploss:0,
+                  exchange: "NSE", tradingsymbol:"", transaction_type:"", order_type: "LIMIT",
+                  product: "MIS", trigger_price:0, squareoff:0, variety:"regular", user_id:""
+                }
 
 function Zerodha(user_id, password, twofa_value){
     this.user_id = user_id
@@ -62,6 +69,20 @@ try{
         }catch(err){
             console.log(err)
         }
+    }
+
+    async function placeLimit(tradingsymbol, transaction_type, quantity, price){
+      try{
+        var data = {tradingsymbol, transaction_type, quantity, price}
+        data = {
+          ...LI_JSON,
+          ...data
+        }
+        response = await this.fetch(LIMIT_ORDER, {method: "POST", headers: {authorization: this.getAuth(), ...URL_ENCODED}, body: url_encode(data)})
+        return response
+      }catch(err){
+        console.log(err)
+      }
     }
     
     function getAuth(){
@@ -129,6 +150,7 @@ try{
     Zerodha.prototype.login           = login
     Zerodha.prototype.tfa             = tfa
     Zerodha.prototype.placeBO         = placeBO
+    Zerodha.prototype.placeLimit      = placeLimit
     Zerodha.prototype.getAuth         = getAuth
     Zerodha.prototype.onScriptsLoaded = onScriptsLoaded
     Zerodha.prototype.url_encode      = url_encode

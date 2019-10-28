@@ -39,27 +39,21 @@ def get_instruments(data, result):
         'data': output
     }
 
-def start_ws_stream(result):
+def start_ws_stream():
     global storage
     (chi, par) = Pipe(True)
     pipe = WebSocketPipe(process_args, par, chi)
     storage['pipe'] = pipe
     thread = Thread(target=web_socket, args=(pipe,))
-    result['r'] = {
-        'handler': 'start_automation',
-        'status': 'success'
-    }
     thread.start()
-    return pipe
-
-def start_orb(pipe):  # at 9:13 AM this method gets executed
     tokens = []
     r = requests.get("http://localhost:3000/orb/stocks")
     stocks = json.loads(r.content)['stocks']
     for stock in stocks:
         if stock:
             try:
-                token = int(history.get_instrument_token(stock['name'], "NSE", "EQ"))
+                token = int(history.get_instrument_token(
+                    stock['name'], "NSE", "EQ"))
                 tokens.append(token)
                 stock['token'] = token
             except:
@@ -68,28 +62,38 @@ def start_orb(pipe):  # at 9:13 AM this method gets executed
         'status': "subscription",
         'data': tokens
     }
-    pipe.write(json.dumps(pipe_data)) #subscribed to the tokens in websocket
+    storage['tokens'] = tokens
+    storage['stocks'] = stocks
+    pipe.write(json.dumps(pipe_data))  # subscribed to the tokens in websocket
+    return pipe
+
+def start_orb(pipe, simulation=False):  # at 9:13 AM this method gets executed
+    if(simulation):
+        for i in range(len(dataFeed.observers)):
+            if(dataFeed.simulations[i]):
+                dataFeed.detach(i)
     global orb
-    orb = OpenRangeBreakout(tokens=tokens, stocks=stocks) #initialized open range breakout
-    global orb_thread
-    orb_thread = Thread(target=orb.start)
-    orb_thread.start()
-    dataFeed.attach(orb) #open range breakout is subscribed for any data
+    orb = OpenRangeBreakout(tokens=storage['tokens'], stocks=storage['stocks'], timeframe=[6])  # initialized open range breakout
+    dataFeed.attach(orb, simulation=simulation) #open range breakout is subscribed for any data
 
 def stop_orb():
     global orb
-    dataFeed.detach(orb)
+    dataFeed.detach(observer = orb)
     
 
 def start_automation(data={}, result={}):
     print("Starting Automation")
     #start the websocket streaming in nodejs process
-    pipe = start_ws_stream(result)
     print("Websocket streaming started")
     #starting open range breakout
-    start_orb(pipe)
+    start_orb(storage['pipe'])
     print('Started open range breakout')
-    
+
+def simulate_automation(data, result):
+    print("Simulating Automation: {}".format(data.get('start')))
+    #start the datafeed dummy transaction
+    start_orb(None, simulation=True)
+    dataFeed.simulate(start_time=data.get('start'), end_time=data.get('end'), real_time=data.get('realTime'))
 
 def send_automation_data(data, result):
     storage['pipe'].write(json.dumps(data))
@@ -125,6 +129,7 @@ def force_stop(data, result):
 handlers = {
     'get_instruments': get_instruments,
     'start_automation': start_automation,
+    'simulate_automation': simulate_automation,
     'send_automation_data': send_automation_data,
     'send_automation_subscription': send_automation_subscription,
     'stop_automation': stop_automation,
@@ -154,7 +159,8 @@ def web_socket(pipe):
         data = pipe.read().decode('utf-8')
         data = json.loads(data)
         if(data['status'] == 'success'):
-            dataFeed.notify(data['data'])
+            for d in data['data']:
+                dataFeed.notify(d)
         if(data['status'] == 'exit'):
             write_to_node({
                 'handler': 'end_automation',
@@ -176,7 +182,7 @@ def process_thread(handler, data, result):
     return None
     
 def main(handlers):
-    start_automation()
+    start_ws_stream()
     app = Flask(__name__)
     api = Api(app)
 

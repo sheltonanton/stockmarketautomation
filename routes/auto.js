@@ -24,6 +24,24 @@ router.get('/start_automation', function(req, res, next){
     !pyscript && process_not_started(res);
 })
 
+/* RUN AUTOMATION AS SIMULATION */
+router.post('/simulate', function(req, res, next){
+    let data = req.body.data
+    data = {
+        start: data[0],
+        end: data[1]
+    }
+    pyscript && pyscript.process_data('simulate_automation', data, (result, err) => {
+        if(err){
+            res.send(error)
+        }else{
+            str = "Simulation Started from " + ((data['end']) ? data['start'] + " to " + data['end']: data['start'])
+            express.ws_write(str)
+            res.send(result)
+        }
+    })
+})
+
 /* STOP AUTOMATION */
 router.get('/stop_automation', function(req, res, next){
     pyscript && pyscript.process_data('stop_automation', {}, (result, err) => {

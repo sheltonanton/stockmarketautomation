@@ -84,7 +84,6 @@ class BacktestRunloop:
             output.loc[index, 'start'] = start_time
             output.loc[index, 'dir'] = ('up','down')[row['down']]
             while True:
-                i = i+1
                 r = df.loc[i]
                 if(row['t'] >= exit_):
                     end_time = r['t']
@@ -117,6 +116,7 @@ class BacktestRunloop:
                     output.loc[index, 'end'] = end_time
                     output.loc[index, 'traded_amount'] = row['price'] - stop_loss
                     break
+                i = i+1
         return(result, output)
 
 class Strategy:
@@ -191,14 +191,14 @@ class Candles:
         self.candles = []
         self.current_range = []
     
-    def run_candling(self, timeperiod, callback):
+    def run_candling(self, timeperiod, callback, cargs):
         time.sleep(timeperiod)
         prev_candle = self.save_prev_candle()
-        callback(self, prev_candle)
+        callback(self, prev_candle, cargs)
     
-    def start_candling(self, timeperiod=60, callback=lambda x,y:x):
+    def start_candling(self, timeperiod=60, callback=lambda x,y:x, cargs={}):
         self.timeperiod = timeperiod
-        thread = Thread(target=self.run_candling, args=(timeperiod, callback))
+        thread = Thread(target=self.run_candling, args=(timeperiod, callback, cargs))
         thread.start()
         
     def get_candles(self, start_index=0, end_index=0):
@@ -253,7 +253,7 @@ class Collector:
         self.option = option
 
     def start_collector(self):
-        for key in self.options:
+        for key in self.option:
             candles = Candles()
             self.stocks[key] = {
                 'candles': candles
@@ -278,12 +278,17 @@ class Collector:
         return "Collector"
 
 class Trader:
-    def __init__(self, name, demo=True, amount=1000, config={}):
+    '''
+        Trader is the abstract class for allowing operations such as taking, tracking and exiting from
+        orders;
+        Trader should be initialized with loaded funds or should be modified dynamically within the limit
+    '''
+    def __init__(self, name, config={}):
         self.name = name
-        self.demo = demo #if set to true, dummy trades are taken
-        self.history = {} #records all previous trades
-        self.amount = amount #amoiunt gets reduced based on the trade and may increase or decrease based on the result
-        self.config = config #config contains callbacks to call when trading, some pre-requisites too
+        self.orders = {}
+        self.net = 0
+        self.fund = 0
+        self.config = config
 
     def configure(self, config, config_fn=lambda x:x):
         '''
@@ -291,24 +296,40 @@ class Trader:
         '''
         return
 
-    def trade(self, price, target, stop_loss, quantity):
-        '''
-            Trade will be taken based on the above parameters
-            On non-demo trade, the callbacks will be called accordingly, if set
+    def trade_bo(self, price, target, stoploss, quantity):
+        '''Trade will be taken based on the above parameters
+            returns order
         '''
         return
 
-    def get_history(self):
+    def trade_limit(self, price, quantity):
+        '''Limit trade with no stoploss and traget
+            returns order
+        '''
+        return
+
+    def trade_exit(self, order=None, orderId=None):
+        '''Exit the trade for the particular order or orderId'''
+        if(orderId):
+            order = self.orders.get(orderId)
+        if(order):
+            print(order)
+
+    def get_orders(self):
         return
 
     def close_all_trades(self):
         return
 
-    def set_amount(self, amount):
-        self.amount = amount
+    def set_fund(self, fund):
+        self.fund = fund
 
-    def get_amount(self):
-        return self.amount
+    def get_fund(self):
+        return self.fund
 
-    def get_result(self):
-        return None
+    def add_fund(self, fund):
+        self.fund = self.fund + fund
+        return self.fund
+
+    def get_net(self):
+        return self.net

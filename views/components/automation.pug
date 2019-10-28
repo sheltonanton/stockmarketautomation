@@ -5,6 +5,7 @@ mixin automation(data)
         .automation-buttons
             .flex-column
                 button.automation-button(disabled=automation_flag, onclick='auto_start_process()') Start Process
+                button.automation-button(disabled=automation_flag, onclick="auto_simulate('automation-input')") Simulate
                 button.automation-button(disabled=automation_flag, onclick="auto_subscribe('automation-input')") Subscribe
                 button.automation-button(disabled=automation_flag, onclick='auto_stop_process()') Stop Process
                 button.automation-button(disabled=automation_flag, onclick='auto_force_stop()') Force Stop

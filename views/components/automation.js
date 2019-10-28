@@ -77,6 +77,14 @@ function auto_start_streaming(){
 async function auto_start_process(){
     result = await send_api('/auto/start_automation', 'get')
 }
+
+async function auto_simulate(input) {
+    input = document.getElementById(input)
+    result = await send_json('/auto/simulate', 'post', JSON.stringify({
+        data: input.value.split(' to ')
+    }))
+}
+
 async function auto_stop_process(){
     result = await send_api('/auto/stop_automation', 'get')
 }
@@ -92,10 +100,9 @@ async function auto_subscribe(input){
 async function order_get_data(table, resDiv){
     let data = await send_api('/order/bo','get')
     data = data['data']
-    let columns = ['stock','type','quantity','entryPrice','exitPrice']
+    let columns = ['stock','type','entryPrice','exitPrice','entryTime','exitTime']
     columns = columns.map(column => {return {data: column, title: column}})
-    $(`#${table}`).DataTable({data,columns, paging: false, scrollY: 150, autoWidth: true})
-
+    $.fn.dataTable.ext.errMode = 'none';
     let total_profit = 0
     let total_loss = 0
     let invested = 0
@@ -104,10 +111,12 @@ async function order_get_data(table, resDiv){
         if(d['exitPrice']){
             invested = invested + parseFloat(d['entryPrice']) * parseInt(d['quantity'])
             traded = traded + (parseFloat(d['entryPrice']) + parseFloat(d['exitPrice'])) * parseInt(d['quantity'])
-            let diff = (parseFloat(d['exitPrice']) - parseFloat(d['entryPrice'])) * ((d['type'] == 'buy')? 1: -1)
+            let diff = (parseFloat(d['exitPrice']) - parseFloat(d['entryPrice'])) * ((d['type'] == 'BUY')? 1: -1)
             let r = parseInt(d['quantity']) * diff
             if(r < 0){total_loss+=r}else{total_profit+=r}
         }
+        d['entryTime'] = new Date(parseInt(d['entryTime']+'000')).toTimeString().split(' GMT')[0]
+        d['exitTime'] = new Date(parseInt(d['exitTime']+'000')).toTimeString().split(' GMT')[0]
     })
     let net = total_profit + total_loss
     let d = document.getElementById(resDiv)
@@ -120,6 +129,13 @@ async function order_get_data(table, resDiv){
             <tr><td>Traded Amt</td><td>: ${traded.toFixed(0)}</td></tr>
         </table>
     `
+    $(`#${table}`).DataTable({data,columns, paging: false, scrollY: 150, autoWidth: true,
+        rowCallback: function (row, data, index) {
+            result = (data['exitPrice'] - data['entryPrice']) * ((data['type']=="BUY")? 1:-1)
+            $(row).css({'background-color':(result >0)? '#caf8d6': '#f5ced9'})
+        }
+    })
+
 }
 
 /* OPEN RANGE BREAKOUT */
