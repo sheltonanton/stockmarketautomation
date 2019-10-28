@@ -9,6 +9,7 @@ router.post('/bo', function(req, res, next){
         response = express.zt.placeBO(data['stock'], data['type'], data['quantity'], 0.7, 1.0, data['price'])
     }
     console.log(data)
+    data['entryPrice'] = data['price']
     Order.create(data).then((r, err) => {
         express.ws_write(data, null, 'orderCreated')
         res.send({

@@ -6,7 +6,8 @@ import json
 BO_URL = urls['order_bo']
 REGULAR_URL = urls['order_regular']
 
-class ZerodhaTrader(Trader):
+
+class SimulationTrader(Trader):
 
     def __init__(self, name, config={}):
         Trader.__init__(self, name, config)
@@ -21,8 +22,7 @@ class ZerodhaTrader(Trader):
             'quantity': quantity,
             'price': price,
             'target': target,
-            'stoploss': stoploss,
-            'original': True
+            'stoploss': stoploss
         }
         r = requests.post(BO_URL, json={'bo': order})
         r = json.loads(r.content)
@@ -34,7 +34,7 @@ class ZerodhaTrader(Trader):
             self.fund = self.fund - price
         else:
             order['executed'] = False
-            
+
         return r.get('status')
 
     def trade_limit(self, stock, price, otype, quantity):
@@ -42,13 +42,13 @@ class ZerodhaTrader(Trader):
             'stock': stock,
             'price': price,
             'type': otype,
-            'qunatity': quantity,
-            'original': True
+            'qunatity': quantity
         }
         r = requests.post(REGULAR_URL, json={'regular': order})
         r = json.loads(r.content)
         if(r.get('status') == 'success'):
-            order['executed'] = True #should check with zerodha for order execution
+            # should check with zerodha for order execution
+            order['executed'] = True
             order['id'] = r.get('_id')
             self.orders[r['_id']] = order
             self.fund = self.fund - price
@@ -59,7 +59,8 @@ class ZerodhaTrader(Trader):
         if(order):
             #send exit request
             #TODO TODO TODO delete order
-            url = "{}/{}?order_id={}&variety=bo".format(BO_URL, order.get('id'),order.get('id'))
+            url = "{}/{}?order_id={}&variety=bo".format(
+                BO_URL, order.get('id'), order.get('id'))
             r = requests.delete(url)
             j = json.loads(r.content)
             return j['status']
