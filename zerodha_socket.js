@@ -15,7 +15,12 @@ const SUBSCRIPTION = "subscription";
                 resolve(ws)
             },
             onmessage: function(data){
-                console.olog({status: 'success', data: JSON.parse(data)})
+                data = JSON.parse(data)
+                if(Array.isArray(data)){
+                    console.olog({status: 'success', data})
+                }else if(data.console){
+                    console.olog({status: 'console', data: data.message})
+                }
             }
         })
     })

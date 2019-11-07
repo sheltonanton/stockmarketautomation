@@ -1,6 +1,6 @@
 from autotrade import Trader
 import requests
-from urls import urls
+from mapping import urls
 import json
 
 BO_URL = urls['order_bo']

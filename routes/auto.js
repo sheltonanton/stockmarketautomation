@@ -1,6 +1,8 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
+const Strategy = require('../models/strategy')
+const Trade = require('../models/trade')
 var pyscript = null;
 
 /* GET INSTRUMENTS */
@@ -14,28 +16,40 @@ router.post('/instruments', function (req, res, next) {
 })
 
 /* RUN AUTOMATION */
-router.get('/start_automation', function(req, res, next){
+router.get('/start_automation', async function(req, res, next){
     express.ws_write("Starting Automation")
-    pyscript && pyscript.process_data('start_automation', {}, (result, err) => {
-        express.ws_write("Started Automation")
-        res.send(result)
-        return;
-    })
-    !pyscript && process_not_started(res);
+        s = await Strategy.find({})
+        t = await Trade.find({})
+        a = {},t.forEach(b => {a[b._id] = b})
+        s.forEach(d => {d.trades = d.trades.map(c => {return a[c]})})
+        data = {strategies: s}
+        pyscript && pyscript.process_data('start_automation', data, (result, err) => {
+            express.ws_write("Started Automation")
+            res.send(result)
+            return;
+        })
+        !pyscript && process_not_started(res);
 })
 
 /* RUN AUTOMATION AS SIMULATION */
-router.post('/simulate', function(req, res, next){
+router.post('/simulate', async function(req, res, next){
     let data = req.body.data
     data = {
         start: data[0],
         end: data[1]
     }
+    s = await Strategy.find({})
+    t = await Trade.find({})
+    console.log(s)
+    console.log(t)
+    a = {},t.forEach(b => {a[b._id] = b})
+    s.forEach(d => {d.trades = d.trades.map(c => {return a[c]})})
+    data.strategies = s
     pyscript && pyscript.process_data('simulate_automation', data, (result, err) => {
-        if(err){
+        if (err) {
             res.send(error)
-        }else{
-            str = "Simulation Started from " + ((data['end']) ? data['start'] + " to " + data['end']: data['start'])
+        } else {
+            str = "Simulation Started from " + ((data['end']) ? data['start'] + " to " + data['end'] : data['start'])
             express.ws_write(str)
             res.send(result)
         }
@@ -116,6 +130,7 @@ function process_data(url, data, callback){
         callback(null, err)
     })
 }
+
 pyscript = {process_data} //TODO temporary, need to replace with something robust
 
 module.exports = router;

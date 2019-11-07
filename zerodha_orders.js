@@ -6,6 +6,7 @@ const LOGIN = '/api/login'
 const TFA = '/api/twofa'
 const BRACKET_ORDER = 'oms/orders/bo'
 const LIMIT_ORDER = 'oms/orders/regular'
+const COVER_ORDER = 'oms/orders/co'
 
 const URL_ENCODED = { 'Content-Type': 'application/x-www-form-urlencoded' }
 const BO_JSON = {quantity:0, price:0, stoploss:0, trailing_stoploss:0, 
@@ -17,6 +18,11 @@ const LI_JSON = {
                   exchange: "NSE", tradingsymbol:"", transaction_type:"", order_type: "LIMIT",
                   product: "MIS", trigger_price:0, squareoff:0, variety:"regular", user_id:""
                 }
+
+const CO_JSON = {quantity:0, price:0, stoploss:0, trailing_stoploss:0,
+                  exchange: "NSE", tradingsymbol: "", transaction_type: "", order_type:"LIMIT", product: "MIS", validity: "DAY",
+                  disclosed_quantity:0, trigger_price:0, squareoff:0, stoploss:0, trailing_stoploss:0,
+                  variety: "co", user_id: ""}
 
 function Zerodha(user_id, password, twofa_value){
     this.user_id = user_id
@@ -69,6 +75,27 @@ try{
         }catch(err){
             console.log(err)
         }
+    }
+
+    async function placeCO(tradingsymbol, transaction_type, quantity, trigger_price, price){
+      transaction_type = transaction_type.toUpperCase()
+      tradingsymbol = tradingsymbol.toUpperCase()
+      price = parseFloat(price)
+      quantity = parseInt(quantity)
+      trigger_price = parseFloat(trigger_price)
+      try {
+        var data = {...CO_JSON, tradingsymbol, transaction_type, quantity, trigger_price, price}
+        if(!price) data.order_type = "MARKET"
+        console.log(data)
+        response = await this.fetch(COVER_ORDER, {method: "POST", headers: {authorization: this.getAuth(), ...URL_ENCODED}, body: url_encode(data)})
+        return response
+      }catch(err){
+        console.log(err)
+      }
+    }
+
+    async function deleteCO(params){
+      //TODO delete co
     }
 
     async function placeLimit(tradingsymbol, transaction_type, quantity, price){
@@ -150,6 +177,7 @@ try{
     Zerodha.prototype.login           = login
     Zerodha.prototype.tfa             = tfa
     Zerodha.prototype.placeBO         = placeBO
+    Zerodha.prototype.placeCO         = placeCO
     Zerodha.prototype.placeLimit      = placeLimit
     Zerodha.prototype.getAuth         = getAuth
     Zerodha.prototype.onScriptsLoaded = onScriptsLoaded

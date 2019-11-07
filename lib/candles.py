@@ -13,10 +13,10 @@ class Candles:
         time.sleep(timeperiod)
         self.save_prev_candle()
         
-    def callback(self):
+    def callback_a(self):
         pass
     
-    def start_candling(self, timeperiod=0, start_price=0, callback=callback):
+    def start_candling(self, timeperiod=0, start_price=0, callback=callback_a):
         self.callback = callback
         self.timeperiod = timeperiod
         if(start_price): 
@@ -39,11 +39,14 @@ class Candles:
         current_candle['low'] = min(self.current_range)
         current_candle['open'] = self.current_range[0]
         current_candle['close'] = self.current_range.pop()
+        current_candle['time'] = self.time
+        #TODO need to add volume to candle
         self.candles.append(current_candle)
         self.callback(current_candle, time.time_ns())
         self.current_range = []
         
-    def add_price(self, price):
+    def add_price(self, price, time=None):
+        self.time = time
         self.current_range.append(price)
         self.index = self.index + 1
         if(self.index == self.period and not self.timeperiod):

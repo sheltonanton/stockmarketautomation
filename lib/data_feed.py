@@ -21,33 +21,34 @@ class DataFeed(Subject):
     def notify(self, data):
         self.data = data
         for i in range(len(self.observers)):
-            try:
-                if(self.simulations[i] == bool(data.get('sm'))):
-                    self.observers[i].update(self)
-            except:
-                print("Exception in the observer {}", self.observers[i])
+            # try:
+            if(self.simulations[i] == bool(data.get('sm'))):
+                self.observers[i].update(self)
+            # except:
+            #     print("Exception in the observer {}", self.observers[i])
 
     def attach(self, observer, simulation=False):
         self.simulations.append(simulation)
         Subject.attach(self, observer)
         print('Attached; ',self.observers)
 
-    def detach(self, index, observer=None):
+    def detach(self, observer, index=None):
         if(observer):
             Subject.detach(self, observer)
             for i in range(len(self.observers)):
                 if(observer == self.observers[i]):
                     self.simulations.pop(i)
             return
-        self.simulations.pop(index)
+        self.simulations.pop(self.observers[index])
         self.observers.pop(index)
         print('Detached; ',(self.observers))
 
-    def simulate(self, start_time=None, end_time=None, real_time=None):
-        thread = Thread(target=self.start_simulation, args=(start_time, end_time, real_time))
+    def simulate(self, start_time=None, end_time=None, real_time=None, callback=None):
+        thread = Thread(target=self.start_simulation, args=(start_time, end_time, real_time, callback))
         thread.start()
+        return thread
 
-    def start_simulation(self, start_time=None, end_time=None, real_time=False):
+    def start_simulation(self, start_time=None, end_time=None, real_time=False, callback=None):
         global no_save
         no_save = True
         date_format = '%m-%d-%Y'
@@ -81,6 +82,7 @@ class DataFeed(Subject):
                         cur_date = cur_date + timedelta(days=1)
                         f = open("{}\\{}.csv".format(self.filepath, cur_date.strftime(date_format)))
                         next(f)
+        callback()
 
 class DataSaver(Observer):
     def __init__(self, filepath):

@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
+import pdb
 import requests
 import json
 import time
 from threading import Thread
-
+from datetime import datetime, timedelta
 
 class History:
     """
@@ -187,9 +188,12 @@ class Strategy:
         pass
 
 class Candles:
-    def __init__(self):
+    def __init__(self, timeperiod=1):
         self.candles = []
         self.current_range = []
+        self.timeperiod = timeperiod
+        self.current_time = None
+        self.next_time = None
     
     def run_candling(self, timeperiod, callback, cargs):
         time.sleep(timeperiod)
@@ -215,12 +219,23 @@ class Candles:
         current_candle['low'] = min(self.current_range)
         current_candle['open'] = self.current_range[0]
         current_candle['close'] = self.current_range.pop()
+        current_candle['time'] = self.current_time.time()
         self.candles.append(current_candle)
-        self.current_range = []
+        self.current_range = [current_candle['close']]
+        self.next_time = self.current_time + timedelta(minutes=self.timeperiod)
         return current_candle
         
-    def add_price(self, price):
+    def add_price(self, price, time=None):
+        price = float(price)
+        time = int(time)
+        if(self.current_time is None):
+            self.current_time = datetime.fromtimestamp(time)
+            self.next_time = (self.current_time + timedelta(minutes=self.timeperiod))
+        else:
+            self.current_time = datetime.fromtimestamp(time)
         self.current_range.append(price)
+        if(self.current_time.time() >= self.next_time.time()):
+            self.save_prev_candle()
     
     def get_candles_count(self):
         return len(self.candles)
@@ -276,60 +291,3 @@ class Collector:
 
     def get_name(self):
         return "Collector"
-
-class Trader:
-    '''
-        Trader is the abstract class for allowing operations such as taking, tracking and exiting from
-        orders;
-        Trader should be initialized with loaded funds or should be modified dynamically within the limit
-    '''
-    def __init__(self, name, config={}):
-        self.name = name
-        self.orders = {}
-        self.net = 0
-        self.fund = 0
-        self.config = config
-
-    def configure(self, config, config_fn=lambda x:x):
-        '''
-            Used to configure the trader with the pre-requesites
-        '''
-        return
-
-    def trade_bo(self, price, target, stoploss, quantity):
-        '''Trade will be taken based on the above parameters
-            returns order
-        '''
-        return
-
-    def trade_limit(self, price, quantity):
-        '''Limit trade with no stoploss and traget
-            returns order
-        '''
-        return
-
-    def trade_exit(self, order=None, orderId=None):
-        '''Exit the trade for the particular order or orderId'''
-        if(orderId):
-            order = self.orders.get(orderId)
-        if(order):
-            print(order)
-
-    def get_orders(self):
-        return
-
-    def close_all_trades(self):
-        return
-
-    def set_fund(self, fund):
-        self.fund = fund
-
-    def get_fund(self):
-        return self.fund
-
-    def add_fund(self, fund):
-        self.fund = self.fund + fund
-        return self.fund
-
-    def get_net(self):
-        return self.net

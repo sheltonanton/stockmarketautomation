@@ -333,7 +333,7 @@ function func() {
         return n
     } 
     t.prototype.websocketconnect = function(url){
-        ws = new window.WebSocket("wss://ws.zerodha.com/?api_key=kitefront&user_id=IV8690&public_token=xZvhphFA1VjxmHRFSBv3bl4t505t3yKO&uid=1569568239789&user-agent=kite3-web&version=2.2.0")
+        ws = new window.WebSocket("wss://ws.zerodha.com/?api_key=kitefront&user_id=IV8690&user-agent=kite3-web&version=2.2.0")
         websocket = ws
         ws.binaryType = 'arraybuffer'
         ws.onopen = callbacks.onopen
@@ -343,7 +343,12 @@ function func() {
                     var n = t.parseBinary(e.data);
                     callbacks.onmessage(JSON.stringify(n))
                 }
-            } else t.processMessage(e.data);
+            } else {
+                callbacks.onmessage(JSON.stringify({console:true,message:JSON.parse(e.data)}))
+                if(typeof e.data == 'object')
+                    callbacks.onmessage(JSON.stringify(n))
+                t.processMessage(e.data);
+            } 
             t.lastDataReceivedTime = new Date()
         }
     }

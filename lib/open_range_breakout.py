@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from observer import Observer, Subject
 from autotrade import Candles
-from urls import urls
+from mapping import urls
 
 
 BO_URL = urls['order_bo']
