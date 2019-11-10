@@ -2,11 +2,19 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/order')
 
+var orderId = 0
 /* TAKING AN ORDER */
-router.post('/bo', function(req, res, next){
+router.post('/bo', async function(req, res, next){
     let data = req.body['bo'];
     if(data['original']){
-        response = express.zt.placeBO(data['stock'], data['type'], data['quantity'], 0.7, 1.0, data['price'])
+        console.log(data)
+        response = await express.zt.placeBO(data['stock'], data['type'], data['quantity'], data['target'], data['stoploss'], data['price'])
+        res.send({
+            status: 'success',
+             data: {
+                 '_id': response.data.order_id
+             }
+        })
     }else{
         data['entryPrice'] = data['price']
         Order.create(data).then((r, err) => {
@@ -62,6 +70,9 @@ router.put('/bo', function(req, res, next){
 /* EXITING AN ORDER */
 router.delete('/bo', function(req, res, next){
     let data = req.body['bo'];
+    res.send({
+        status: 'success'
+    })
     //deleting the zerodha order
 })
 /* LIMIT ORDER */
@@ -79,8 +90,8 @@ router.post('/regular', function(req, res, next){
 router.post('/co', async function(req, res, next){
     let data = req.body['co']
     if(data['original']){
+        console.log(data)
         response = await express.zt.placeCO(data['stock'], data['type'], data['quantity'], data['trigger_price'], data['price'])
-        console.log(response)
         res.send({
             status: 'success',
             data: {
@@ -88,15 +99,45 @@ router.post('/co', async function(req, res, next){
             }
         })
     }else{
-        console.log(data)
+        //TODO Remove below codes
+        let {
+            stock, quantity, type, entryTime, entryPrice
+        } = data
+        r = await Order.create({orderId: orderId, stock, quantity, type, entryTime, entryPrice})
+        res.send({
+            status: 'success',
+            data: {
+                '_id': orderId
+            }
+        })
+        orderId = orderId + 1
     }
 })
 /* DELETE COVER ORDER */
-router.delete('/co', function(req, res, next){
-    let params = req.body.params
+router.delete('/co', async function(req, res, next){
+    let params = req.body
     console.log(params)
     if(params['original']){
-        response = express.zt.deleteCO(params)
+        response = await express.zt.deleteCO(params)
+        console.log(response)
+        res.send({
+            'status': 'success',
+            data: {
+                '_id': params['order_id']
+            }
+        })
+    }else{
+        //TODO remove the below codes
+        let {
+            exitTime, exitPrice
+        } = params
+        await Order.updateOne({orderId: params['order_id']}, {$set:{exitTime, exitPrice}})
+        res.send({
+            'status': 'success',
+            data: {
+                '_id': params['order_id']
+            }
+        })
     }
 })
 

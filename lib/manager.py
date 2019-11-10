@@ -16,12 +16,15 @@ class TradeManager:
         self.traders = []
         self.config = config
         self.input = inputPipe
-        self.strategies = defaultdict(list)
-        self.counters = defaultdict(list)
-        self.flag = False
         self.simulation = simulation
         self.zero = Operand(d=0)
         self.one = Operand(d=1)
+        self.initialize()
+
+    def initialize(self):
+        self.strategies = defaultdict(list)
+        self.counters = defaultdict(list)
+        self.flag = False
 
     def start(self):
         self.flag = True
@@ -31,34 +34,36 @@ class TradeManager:
     def run(self):
         while(self.flag):
             data = self.input.recv()
+            self.perform_pre_operations(strategy=data)
             for trade in self.strategies[data['_id']]:
                 print(datetime.fromtimestamp(int(data['data']['t'])).strftime("%H:%M:%S"))
-                self.perform_pre_operations(strategy=data, trade=trade)
-                price = trade['price']
-                target = trade['target']
-                stoploss = trade['stoploss']
-                quantity = trade['quantity']
-                s = d = None
-                s = data['stock']
-                d = data['data']
-                price = (price, price.update(d).d)[type(price) is Operation or type(price) is Operand]
-                target = (target, target.update(d).d)[type(target) is Operation or type(target) is Operand]
-                stoploss = (stoploss, stoploss.update(d).d)[type(stoploss) is Operation or type(stoploss) is Operand]
-                quantity = (quantity, quantity.update(d).d)[type(quantity) is Operation or type(quantity) is Operand]
-                if(quantity == 0):
-                        quantity = 1
-                if(target == 0):
-                    #TODO generalize counter
-                    r = trade['trader'].trade(stock=s, otype=data.get('type') or 'buy', price=price, stoploss=stoploss, quantity=quantity, params=d)
-                    if r:
-                        self.counters[data['_id']].append({
-                            'trader': trade['trader'],
-                            'args': [r]
-                        })
-                else:
-                    trade['trader'].trade(s, data.get('type') or 'buy', price, target, stoploss, quantity, {})
+                if(data['status'] == 'on'):
+                    price = trade['price']
+                    target = trade['target']
+                    stoploss = trade['stoploss']
+                    quantity = trade['quantity']
+                    s = d = None
+                    s = data['stock']
+                    d = {**data, **data['data']}
+                    price = (price, price.update(d).d)[type(price) is Operation or type(price) is Operand]
+                    target = (target, target.update(d).d)[type(target) is Operation or type(target) is Operand]
+                    stoploss = (stoploss, stoploss.update(d).d)[type(stoploss) is Operation or type(stoploss) is Operand]
+                    quantity = (quantity, quantity.update(d).d)[type(quantity) is Operation or type(quantity) is Operand]
+                    if(quantity == 0):
+                            quantity = 1
+                    if(target == 0):
+                        #TODO generalize counter
+                        r = trade['trader'].trade(stock=s, otype=data.get('type') or 'buy', price=price, stoploss=stoploss, quantity=quantity, params=d)
+                        if r:
+                            self.counters[data['counter']].append({
+                                'trader': trade['trader'],
+                                'args': [r['variety'], r['order_id']]
+                            })
+                    else:
+                        trade['trader'].trade(s, data.get('type') or 'buy', price, target, stoploss, quantity, params=d)
 
     def load_trades(self, trades):
+        self.initialize()
         if(type(trades) is dict):
             for k in trades:
                 for t in trades[k]:
@@ -68,10 +73,15 @@ class TradeManager:
                 for s in t.get('strategies'):
                     self.strategies[t[s]].append(self.create_trade(t))
 
-    def update(self, order):
+    def update_order(self, order):
         for key in self.strategies:
             trader = self.strategies[key]['trader']
             trader.update_order(order)
+
+    def update(self, data):
+        for key in self.strategies:
+            trader = self.strategies[key]['trader']
+            trader.update(data)
 
     def create_trade(self, trade=None):
         price = self.get_operation(trade.get('price'))
@@ -104,11 +114,15 @@ class TradeManager:
 
     def perform_pre_operations(self, strategy=None, trade=None):
         self.close_counter_trades(strategy=strategy, trade=trade)
+        self.close_trades(strategy=strategy, trade=trade)
+
+    def close_trades(self, strategy=None, trade=None):
+        pass
 
     def close_counter_trades(self, strategy=None, trade=None):
         counters = self.counters[strategy['_id']]
         for counter in counters:
-            status = counter['trader'].close_counter_trades(counter['args'])
+            status = counter['trader'].close_counter_trades([*counter['args'], strategy.get('data')])
             if status:
                 counters.remove(counter)
 

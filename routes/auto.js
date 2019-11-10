@@ -35,13 +35,10 @@ router.get('/start_automation', async function(req, res, next){
 router.post('/simulate', async function(req, res, next){
     let data = req.body.data
     data = {
-        start: data[0],
-        end: data[1]
+        dates: data
     }
     s = await Strategy.find({})
     t = await Trade.find({})
-    console.log(s)
-    console.log(t)
     a = {},t.forEach(b => {a[b._id] = b})
     s.forEach(d => {d.trades = d.trades.map(c => {return a[c]})})
     data.strategies = s
@@ -49,7 +46,7 @@ router.post('/simulate', async function(req, res, next){
         if (err) {
             res.send(error)
         } else {
-            str = "Simulation Started from " + ((data['end']) ? data['start'] + " to " + data['end'] : data['start'])
+            str = "Simulation Started for dates " + JSON.stringify(data.dates)
             express.ws_write(str)
             res.send(result)
         }

@@ -17,6 +17,9 @@ router.get('/', function(req, res, next) {
     login,addUser
   });
 });
+router.get('/home', function(req, res, next){
+  res.render('home.html', {})
+})
 
 router.get('/properties/:property', function(req, res, next){
   params = req.params;
@@ -135,7 +138,7 @@ router.post('/zerodha/bo', function(req, res, next){
   }
 })
 
-router.post('/orb/stocks', function(req, res, next){
+router.post('/stocks', function(req, res, next){
   var data = req.body;
   if(data.stock){
     data = {
@@ -157,13 +160,13 @@ router.post('/orb/stocks', function(req, res, next){
   }
 })
 
-router.get('/orb/stocks', function(req, res, next){
+router.get('/stocks', function(req, res, next){
   Stock.find({}, function(err, d){
     if(err) throw new Error(err)
     res.send({stocks: d, status: 'success'});
   })
 })
-router.delete('/orb/stocks', function(req, res, next){
+router.delete('/stocks', function(req, res, next){
   let params = req.query;
   if(params['name']){
     Stock.deleteOne({name: params['name']}, function(err, d){
@@ -200,8 +203,8 @@ Property.findOne({
         await z_login(d.userId, d.password, d.pin)
         express.ws_write(d.userId, null, "loggedIn")
       }catch(ex){
-        err = JSON.parse(ex.response)
-        express.ws_write("", err.message)
+        console.error("Network Connection Error")
+        express.ws_write("", "Network Connection Error")
       }
     })
   }

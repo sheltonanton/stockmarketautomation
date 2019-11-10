@@ -2,3 +2,4 @@ node_modules/
 output/
 lib/__pycache__/
 __pycache__/
+client/node_modules/

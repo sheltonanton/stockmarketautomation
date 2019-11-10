@@ -62,6 +62,10 @@ try{
     }
     
     async function placeBO(tradingsymbol, transaction_type, quantity, squareoff, stoploss, price){
+        transaction_type = transaction_type.toUpperCase()
+        tradingsymbol = tradingsymbol.toUpperCase()
+        price = parseFloat(Math.round(price * 100)/100)
+        quantity = parseInt(quantity)
         try {
             var data = {tradingsymbol, transaction_type, quantity, price, squareoff, stoploss}
             data.order_type = "LIMIT"
@@ -95,7 +99,12 @@ try{
     }
 
     async function deleteCO(params){
-      //TODO delete co
+      try{
+        response = await this.fetch(COVER_ORDER+'/'+params['order_id']+'?parent_order_id='+params['order_id']+'&variety='+params['variety'], {method: "DELETE", headers: {authorization: this.getAuth()}})
+        return response
+      }catch(err){
+        console.log(err)
+      }
     }
 
     async function placeLimit(tradingsymbol, transaction_type, quantity, price){
@@ -178,6 +187,7 @@ try{
     Zerodha.prototype.tfa             = tfa
     Zerodha.prototype.placeBO         = placeBO
     Zerodha.prototype.placeCO         = placeCO
+    Zerodha.prototype.deleteCO        = deleteCO
     Zerodha.prototype.placeLimit      = placeLimit
     Zerodha.prototype.getAuth         = getAuth
     Zerodha.prototype.onScriptsLoaded = onScriptsLoaded

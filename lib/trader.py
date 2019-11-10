@@ -1,6 +1,7 @@
 import requests
 import json
 from mapping import urls, traders
+from datetime import datetime
 import pdb
 
 class Trader:
@@ -101,21 +102,25 @@ class ZerodhaTrader(Trader):
             'price': price,
             'target': target,
             'stoploss': stoploss,
-            'original': True
+            'original': True,
+            'entryPrice': params.get('lastPrice'),
+            'entryTime': int(params.get('t'))
         }
         #TODO initially cancel all orders first if any exists
         r = requests.post(BO_URL, json={'bo': order})
         r = json.loads(r.content)
         if(r.get('status') == 'success'):
             # should check with zerodha for order executed
+            d = r.get('data')
             order['executed'] = True
-            order['id'] = r['_id']
-            self.orders[r['_id']] = order
+            order['id'] = d['_id']
+            self.orders[d['_id']] = order
             self.fund = self.fund - price
-        else:
-            order['executed'] = False
-
-        return r['_id']
+            return {
+                'variety': 'bo',
+                'order_id': d.get('_id')
+            }
+        return None
 
     def trade_limit(self, stock, otype, price, quantity, params):
         order = {
@@ -144,7 +149,9 @@ class ZerodhaTrader(Trader):
             'type': otype,
             'trigger_price': (float(params.get('lastPrice')) - float(stoploss), float(params.get('lastPrice')) + float(stoploss))[otype == 'sell'],
             'quantity': quantity,
-            'original': True
+            'original': not params.get('sm'),
+            'entryPrice': params.get('lastPrice'),
+            'entryTime': int(params.get('t'))
         }
         r = requests.post(CO_URL, json={'co': order})
         r = json.loads(r.content)
@@ -154,7 +161,10 @@ class ZerodhaTrader(Trader):
             order['id'] = d.get('_id')
             self.orders[d['_id']] = order
             self.fund = self.fund - price
-            return d.get("_id")
+            return {
+                'variety': 'co',
+                'order_id': d.get("_id")
+            }
         return None
 
     def trade_exit(self, order=None, orderId=None):
@@ -196,9 +206,15 @@ class ZerodhaTrader(Trader):
         pass
 
     def close_counter_trades(self, args):
-        pass
-        #arg[0] order_id
-        #Need to close all the counter trades for a particular stock
+        params = {
+            'variety': args[0],
+            'order_id': args[1],
+            'original': not args[2].get('sm'),
+            'exitPrice': args[2].get('lastPrice'),
+            'exitTime': int(args[2].get('t'))
+        }
+        r = requests.delete(urls['order_{}'.format(args[0])], json=params)
+        return args[1]
 
     def update_order(self, order):
         pass

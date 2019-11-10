@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 
 const OrderSchema = mongoose.Schema({
+    orderId: String,
     stock: String,
     quantity: Number,
     type: String,

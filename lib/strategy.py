@@ -25,7 +25,7 @@ class StrategyManager(Observer):
             for strategy in self.stocks[key]:
                 if(int(d['token']) == int(strategy.args['token'])):
                     r = strategy.run(d)
-                    if((output is not None) and (type(output) is PipeConnection) and r):
+                    if((output is not None) and (type(output) is PipeConnection) and r and r.d == True):
                         #send the result for the strategy, normally it will be indicators
                         #TODO should send what to do, buy or sell, too
                         request = {
@@ -35,6 +35,7 @@ class StrategyManager(Observer):
                         output.send(request)
 
     def load_strategies(self, strategies):
+        self.stocks = defaultdict(list)
         if(type(strategies) is dict):
             for k in strategies:
                 self.stocks[k].append(self.create_strategy(strategies[k]))

@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from datetime import datetime,timedelta
 from threading import Thread
+import pdb
 
 from observer import Subject, Observer
 
@@ -59,6 +60,7 @@ class DataFeed(Subject):
         endstring = self.end_time.strftime(date_format)
         prev = None
         #for now starting from start_date 9:15AM to end_date H:MM
+        print("Starting Simulation: {}".format(datestring))
         with open("{}\\{}.csv".format(self.filepath, datestring)) as f:
             headers = next(f).strip().split(', ')
             while(True):
@@ -80,8 +82,10 @@ class DataFeed(Subject):
                         break
                     else:
                         cur_date = cur_date + timedelta(days=1)
+                        print("Starting Simulation: {}".format(cur_date.strftime(date_format)))
                         f = open("{}\\{}.csv".format(self.filepath, cur_date.strftime(date_format)))
                         next(f)
+                        pdb.set_trace()
         callback()
 
 class DataSaver(Observer):

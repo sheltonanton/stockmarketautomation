@@ -80,8 +80,9 @@ async function auto_start_process(){
 
 async function auto_simulate(input) {
     input = document.getElementById(input)
+    data = (input.value.includes('to'))? input.value.split(' to ') : input.value.split(',')
     result = await send_json('/auto/simulate', 'post', JSON.stringify({
-        data: input.value.split(' to ')
+        data: data
     }))
 }
 
@@ -111,7 +112,7 @@ async function order_get_data(table, resDiv){
         if(d['exitPrice']){
             invested = invested + parseFloat(d['entryPrice']) * parseInt(d['quantity'])
             traded = traded + (parseFloat(d['entryPrice']) + parseFloat(d['exitPrice'])) * parseInt(d['quantity'])
-            let diff = (parseFloat(d['exitPrice']) - parseFloat(d['entryPrice'])) * ((d['type'] == 'BUY')? 1: -1)
+            let diff = (parseFloat(d['exitPrice']) - parseFloat(d['entryPrice'])) * ((d['type'] == 'buy')? 1: -1)
             let r = parseInt(d['quantity']) * diff
             if(r < 0){total_loss+=r}else{total_profit+=r}
         }
@@ -131,7 +132,7 @@ async function order_get_data(table, resDiv){
     `
     $(`#${table}`).DataTable({data,columns, paging: false, scrollY: 150, autoWidth: true,
         rowCallback: function (row, data, index) {
-            result = (data['exitPrice'] - data['entryPrice']) * ((data['type']=="BUY")? 1:-1)
+            result = (data['exitPrice'] - data['entryPrice']) * ((data['type']=="buy")? 1:-1)
             $(row).css({'background-color':(result >0)? '#caf8d6': '#f5ced9'})
         }
     })
@@ -141,21 +142,21 @@ async function order_get_data(table, resDiv){
 /* OPEN RANGE BREAKOUT */
 async function save_orb_stocks(name){
     data = tokenFieldGetData(name);
-    result = await send_json('/orb/stocks', 'post', JSON.stringify({stocks: data}))
+    result = await send_json('/stocks', 'post', JSON.stringify({stocks: data}))
     //success
 }
 async function add_orb_stock(name){
-    result = await send_json('/orb/stocks', 'post', JSON.stringify({stock: name}))
+    result = await send_json('/stocks', 'post', JSON.stringify({stock: name}))
 }
 async function get_orb_stocks(){
-    result = await send_api('/orb/stocks', 'get')
+    result = await send_api('/stocks', 'get')
     args = result.stocks.map(r => {
         return [r.name, delete_orb_stock]
     })
     tokenFieldPopulate('orb', args)
 }
 async function delete_orb_stock(stock){
-    result = await send_api('/orb/stocks?name='+stock, 'delete')
+    result = await send_api('/stocks?name='+stock, 'delete')
 }
 
 /* USER MANAGER */

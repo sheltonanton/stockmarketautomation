@@ -25,8 +25,9 @@ from data_feed import DataFeed
 from mapping import urls
 from strategy import StrategyManager
 
+p1 = p2 = sp1 = sp2 = None
+sm = tm = ssm = stm = None
 p1, p2 = Pipe()
-sp1, sp2 = Pipe()
 
 dataFeed = DataFeed(save=True, filepath='D:\\programs\\nseTools\\zerodha\\output')
 process_args = ['C:\\Program Files\\nodejs\\node.exe','D:\\programs\\nseTools\\zerodha\\zerodha_socket.js']
@@ -36,9 +37,6 @@ history = History(url="https://kitecharts-aws.zerodha.com/api/chart/{}/{}?from={
 #for live trade
 sm = StrategyManager(outputPipe=p1)
 tm = TradeManager(inputPipe=p2)
-#for simulation
-ssm = StrategyManager(outputPipe=sp1)
-stm = TradeManager(inputPipe=sp2, simulation=True)
 storage = {}
 
 #-----------------------------------------------------ALL PROCESS THREADS METHODS-----------------------------------------------------
@@ -62,7 +60,7 @@ def start_ws_stream():
     thread = Thread(target=web_socket, args=(pipe,))
     thread.start()
     tokens = []
-    r = requests.get("http://localhost:3000/orb/stocks")
+    r = requests.get(urls['stocks'])
     stocks = json.loads(r.content)['stocks']
     for stock in stocks:
         if stock:
@@ -115,22 +113,26 @@ def simulation_callback():
     stm.stop()
 
 def simulate_automation(data, result):
-    print("Simulating Automation: {}".format(data.get('start')))
-    #start the datafeed dummy transaction
-    # start_orb(None, simulation=True)
-    ssm.load_strategies(strategies=data.get('strategies'))
-    trades = {}
-    for s in data.get('strategies'):
-        trades[s['_id']] = s['trades']
-    dataFeed.attach(ssm, simulation=True)
-    stm.load_trades(trades=trades)
-    stm.start()
-    dataFeed.simulate(
-        start_time=data.get('start'), 
-        end_time=data.get('end'), 
-        real_time=data.get('realTime'),
-        callback=simulation_callback).join() #realTime bool - for real lagging
-    print("Simulation Ended")
+    for datestring in data.get('dates'):
+        sp1, sp2 = Pipe()
+        #for simulation
+        ssm = StrategyManager(outputPipe=sp1)
+        stm = TradeManager(inputPipe=sp2, simulation=True)
+        #start the datafeed dummy transaction
+        # start_orb(None, simulation=True)
+        ssm.load_strategies(strategies=data.get('strategies'))
+        trades = {}
+        for s in data.get('strategies'):
+            trades[s['_id']] = s['trades']
+        dataFeed.attach(ssm, simulation=True)
+        stm.load_trades(trades=trades)
+        stm.start()
+        dataFeed.simulate(
+            start_time=datestring, 
+            end_time=datestring,
+            real_time=data.get('realTime'),
+            callback=simulation_callback).join() #realTime bool - for real lagging
+        print("Simulation Ended")
 
 def send_automation_data(data, result):
     storage['ws_pipe'].write(json.dumps(data))
@@ -232,7 +234,6 @@ def process_thread(handler, data, result):
     return None
     
 def main(handlers):
-    start_ws_stream()
     app = Flask(__name__)
     api = Api(app)
 
@@ -250,6 +251,7 @@ def main(handlers):
     api.add_resource(Response, '/')
     while True:
         try:
+            start_ws_stream()
             requests.get(urls['start_process'])
             break
         except:

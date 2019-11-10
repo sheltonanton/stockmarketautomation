@@ -67,9 +67,9 @@ class Operand:
             return False
         c1 = self.p - other.p
         c2 = self.d - other.d
-        if(c1 <= 0 and c2 > 0):
-            return True
-        return False
+        if(c1 < 0 and c2 > 0):
+            return Operand(d=True)
+        return Operand(d=False)
 
     def cb(self, other):
         #perform calculations for finding the crossed below for both operands
@@ -77,9 +77,9 @@ class Operand:
             return False
         c1 = self.p - other.p
         c2 = self.d - other.d
-        if(c1 >= 0 and c2 < 0):
-            return True
-        return False
+        if(c1 > 0 and c2 < 0):
+            return Operand(d=True)
+        return Operand(d=False)
 
     def setd(self, d):
         self.p = self.d
@@ -175,8 +175,7 @@ def create_operation(string=None, data=None):
             r = globals()[operands[x[2]['func']]]
             args = x[2]['args'] if x[2]['args'] else []
             right = r(args=args)
-
-        operator = (None, x[1])[len(x) == 3]
+        operator = x[1] if(len(x) == 3) else None
         return Operation(left_operand=left, operator=operator, right_operand=right)
 
     if(string):
@@ -190,6 +189,16 @@ def create_operation(string=None, data=None):
         operator = o
         return (left, operator, right)
 
+#overridden operands
+class Value(Operand):
+    '''[args] (value)'''
+    def __init__(self, args=[]):
+        Operand.__init__(self)
+        self.setd(args[0])
+
+    def update(self, d):
+        return self
+
 class Time(Operand):
     '''[args] (time)'''
     def __init__(self, args=[]):
@@ -198,6 +207,18 @@ class Time(Operand):
     
     def update(self, d):
         self.setd(self.time)
+        return self
+
+class Price(Operand):
+    '''[args] (noise_factor)'''
+    def __init__(self, args=[]):
+        Operand.__init__(self)
+        self.noise_factor = args[0]
+    
+    def update(self, d):
+        t = d['type']
+        v = (float(d['lastPrice']) - float(self.noise_factor)) if (t == 'sell') else (float(d['lastPrice']) + float(self.noise_factor))
+        self.setd(v)
         return self
 
 class Candle(Operand):
@@ -254,14 +275,14 @@ class MovingAverageConvergenceDivergence(Candle):
                 r = {self.k : [0]}
                 print("Exception")
 
-            self.d = None if np.isnan(r[self.k][-1]) else r[self.k][-1]
+            self.d = 0 if np.isnan(r[self.k][-1]) else r[self.k][-1]
             if(len(r[self.k]) == 1):
-                self.p = None
+                self.p = 0
             else:
-                self.p = None if np.isnan(r[self.k][-2]) else r[self.k][-2]
+                self.p = 0 if np.isnan(r[self.k][-2]) else r[self.k][-2]
             return self
-        self.p = None
-        self.d = None
+        self.p = 0
+        self.d = 0
         return self
 
     def __str__(self):
