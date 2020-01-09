@@ -86,6 +86,14 @@ async function auto_simulate(input) {
     }))
 }
 
+async function auto_backtest(input) {
+    input = document.getElementById(input)
+    data = input.value.split(',')
+    result = await send_json('/auto/backtest', 'post', JSON.stringify({
+        data: data
+    }))
+}
+
 async function auto_stop_process(){
     result = await send_api('/auto/stop_automation', 'get')
 }
@@ -281,5 +289,5 @@ var store = {};
         }
     }
     setTimeout(isloggedin, 0)
-    await get_orb_stocks()
+    // await get_orb_stocks()
 }())

@@ -9,7 +9,9 @@ const OrderSchema = mongoose.Schema({
     entryPrice: Number,
     exitTime: String,
     exitPrice: Number,
-    comments: String
+    comments: String,
+    strategy: String,
+    trades: Array
 })
 
 module.exports = mongoose.model('Order', OrderSchema);

@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 
 const StockSchema = mongoose.Schema({
     name: String,
-    instrumentId: String,
+    token: String,
     details: Map
 })
 

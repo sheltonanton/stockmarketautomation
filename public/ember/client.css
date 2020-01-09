@@ -1,0 +1,127 @@
+@import "entry.css";
+@import "property.css";
+
+* {
+    font-family: sans-serif;
+}
+p {
+    margin: 0px;
+    padding: 0px;
+}
+ul {
+  list-style-type: none;
+  padding: 0px;
+}
+li {
+    padding: 6px;
+    cursor: pointer;
+}
+button {
+    cursor: pointer;
+}
+li:hover,
+.li-selected {
+    background-color: #eee;
+}
+
+.display--inline-block {
+    display: inline-block;
+}
+.operation-block {
+    padding: 4px;
+    border: 1px solid #ddd;
+    background-color: rgba(200,200,200,0.1)
+}
+
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+.flex-align-center {
+    align-items: center;
+}
+.flex-fill-width {
+    flex: 1 1 auto;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.header {
+    font-size: 24px;
+    text-align: center;
+    padding: 8px;
+}
+.container {
+    padding: 8px;
+    border-top: 1px solid #ddd;
+}
+.container-body {
+    flex: 1 1 auto;
+    padding: 8px;
+    position: relative;
+}
+    .list-item {
+        padding: 8px;
+    }
+    
+.left-tree {
+    position: relative;
+    width: 412px;
+    min-width: 412px;
+    padding: 8px;
+    border-right: 1px solid #ddd;
+    font-size: 20px;
+}
+    .left-tree-panel {
+        position: absolute;
+        right: 10px;
+        top: -2px;
+    }
+    .left-tree-panel>span {
+        border: 1px solid #aaa;
+        margin: 2px;
+        padding: 2px;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .list-label {
+        display: inline-block;
+        min-width: 86px;
+    }
+
+.tab-component {
+    border: 1px solid #ddd;
+    margin: 8px;
+}
+    .tab-container {
+        border-bottom: 1px solid #ddd;
+    }
+        .tab-link {
+            display: inline-block;
+            margin: 0px;
+        }
+        .tab-link a {
+            margin-top: 2px;
+            display: inline-block;
+            border: 1px solid #ddd;
+            border-top: 1px solid white;
+            border-left: 0px;
+            padding: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #444;
+        }
+        .tab-link .active {
+            border-bottom: 1px solid white;
+        }
+    
+    .tab-display {
+        /* border: 1px solid #ddd; */
+        height: 472px;
+    }

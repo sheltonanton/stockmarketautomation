@@ -68,12 +68,31 @@ router.put('/bo', function(req, res, next){
 
 
 /* EXITING AN ORDER */
-router.delete('/bo', function(req, res, next){
-    let data = req.body['bo'];
-    res.send({
-        status: 'success'
-    })
-    //deleting the zerodha order
+router.delete('/bo', async function(req, res, next){
+    let params = req.body
+    console.log(params)
+    if(params['original']){
+        response = await express.zt.deleteBO(params)
+        console.log(response)
+        res.send({
+            'status': 'success',
+            data: {
+                '_id': params['order_id']
+            }
+        })
+    }else{
+        //TODO remove the below codes
+        let {
+            exitTime, exitPrice
+        } = params
+        await Order.updateOne({orderId: params['order_id']}, {$set:{exitTime, exitPrice}})
+        res.send({
+            'status': 'success',
+            data: {
+                '_id': params['order_id']
+            }
+        })
+    }
 })
 /* LIMIT ORDER */
 router.post('/regular', function(req, res, next){

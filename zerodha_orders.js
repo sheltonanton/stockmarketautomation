@@ -107,6 +107,15 @@ try{
       }
     }
 
+    async function deleteBO(params){
+      try{
+        response = await this.fetch(BRACKET_ORDER+'/'+params['order_id']+'?parent_order_id='+params['order_id']+'&variety='+params['variety'], {method: "DELETE", headers: {authorization: this.getAuth()}})
+        return response
+      }catch(err){
+        console.log(err)
+      }
+    }
+
     async function placeLimit(tradingsymbol, transaction_type, quantity, price){
       try{
         var data = {tradingsymbol, transaction_type, quantity, price}
@@ -187,6 +196,7 @@ try{
     Zerodha.prototype.tfa             = tfa
     Zerodha.prototype.placeBO         = placeBO
     Zerodha.prototype.placeCO         = placeCO
+    Zerodha.prototype.deleteBO        = deleteBO
     Zerodha.prototype.deleteCO        = deleteCO
     Zerodha.prototype.placeLimit      = placeLimit
     Zerodha.prototype.getAuth         = getAuth

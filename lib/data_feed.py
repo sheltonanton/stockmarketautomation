@@ -21,6 +21,10 @@ class DataFeed(Subject):
 
     def notify(self, data):
         self.data = data
+        if(self.data.get('t')):
+            self.data['time'] = self.data.get('t')
+        if(self.data.get('close')):
+            self.data['lastPrice'] = self.data.get('close')
         for i in range(len(self.observers)):
             # try:
             if(self.simulations[i] == bool(data.get('sm'))):
@@ -49,6 +53,11 @@ class DataFeed(Subject):
         thread.start()
         return thread
 
+    def backtest(self, data=None, callback=None):
+        thread = Thread(target=self.start_backtest, args=(data, callback))
+        thread.start()
+        return thread
+
     def start_simulation(self, start_time=None, end_time=None, real_time=False, callback=None):
         global no_save
         no_save = True
@@ -70,7 +79,7 @@ class DataFeed(Subject):
                     for x in range(len(row)):
                         data[headers[x]] = row[x]
                     if(real_time):
-                        now = int(data['t'])
+                        now = int(data['time'])
                         if prev:
                             time.sleep(now - prev)
                         prev = now
@@ -85,8 +94,30 @@ class DataFeed(Subject):
                         print("Starting Simulation: {}".format(cur_date.strftime(date_format)))
                         f = open("{}\\{}.csv".format(self.filepath, cur_date.strftime(date_format)))
                         next(f)
-                        pdb.set_trace()
-        callback()
+        if callback:
+            callback()
+
+    def start_backtest(self, data={}, callback=None):
+        while(data['candles']):
+            remove = []
+            for token in data['candles']:
+                try:
+                    o = {'token': token, 'sm': True}
+                    d = data['candles'][token].pop(0)
+                    a = {}
+                    a['time'], a['open'], a['high'], a['low'], a['close'], a['volume'] = d
+                    a['sm'] = True
+                    a['isCandle'] = True
+                    a['time'] = int(datetime.strptime(a['time'],'%Y-%m-%dT%H:%M:%S+0530').timestamp())
+                    a['interval'] = (data['interval'] * 60) #in seconds
+                    o.update(a)
+                    self.notify(o)
+                except IndexError:
+                    remove.append(token)
+            for x in remove:
+                data['candles'].pop(x)
+        if callback:
+            callback()
 
 class DataSaver(Observer):
     def __init__(self, filepath):

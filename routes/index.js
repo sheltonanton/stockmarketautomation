@@ -4,6 +4,7 @@ var router = express.Router();
 const Stock = require('../models/stock')
 const Property = require('../models/property')
 const User = require('../models/user')
+const Entry = require('../models/entry')
 
 const login = require('../views/data/forms/login')
 const addUser = require('../views/data/forms/addUser')
@@ -17,9 +18,9 @@ router.get('/', function(req, res, next) {
     login,addUser
   });
 });
-router.get('/home', function(req, res, next){
-  res.render('home.html', {})
-})
+router.get('/backtest', function(req, res, next){
+  res.render('backtest', {})
+});
 
 router.get('/properties/:property', function(req, res, next){
   params = req.params;
@@ -136,46 +137,7 @@ router.post('/zerodha/bo', function(req, res, next){
       error: 'Zerodha not yet logged in'
     })
   }
-})
-
-router.post('/stocks', function(req, res, next){
-  var data = req.body;
-  if(data.stock){
-    data = {
-      name: data.stock
-    }
-    Stock.create(data).then(function (d, err) {
-      if (err) throw new Error(err)
-      express.ws_write("Saved stock: "+ data.name)
-      res.send({
-        status: "success",
-        data: d
-      })
-    }) //saving stocks to Stock collection
-  }else if(data.stocks){
-    res.send({
-      status: "construction",
-      data
-    })
-  }
-})
-
-router.get('/stocks', function(req, res, next){
-  Stock.find({}, function(err, d){
-    if(err) throw new Error(err)
-    res.send({stocks: d, status: 'success'});
-  })
-})
-router.delete('/stocks', function(req, res, next){
-  let params = req.query;
-  if(params['name']){
-    Stock.deleteOne({name: params['name']}, function(err, d){
-      if(err) throw new Error(err)
-      express.ws_write("", "Deleted stock: "+params['name'])
-      res.send({stocks: d, status: 'success'})
-    })
-  }
-});
+}) 
 
 module.exports = router;
 

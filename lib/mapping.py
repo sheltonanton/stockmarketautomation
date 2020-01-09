@@ -3,17 +3,25 @@ urls = {
     'order_bo': 'http://localhost:3000/order/bo',
     'order_co': 'http://localhost:3000/order/co',
     'order_regular': 'http://localhost:3000/order/regular',
-    'stocks': 'http://localhost:3000/stocks'
+    'stocks': 'http://localhost:3000/stocks/active',
+    'history_url': 'https://kitecharts-aws.zerodha.com/api/chart/{}/{}?from={}&to={}',
+    'instruments_csv': "D:\\programs\\nseTools\\zerodha\\instruments.csv"
 }
 
 operands = {
     'time': 'Time',
     'candle': 'Candle',
-    'macd': 'MovingAverageConvergenceDivergence',
     'price': 'Price',
-    'value': 'Value'
+    'value': 'Value',
+    'data': 'Data',
+    'macd': 'MovingAverageConvergenceDivergence',
+    'sma': 'SimpleMovingAverage',
+    'ema': 'ExponentialMovingAverage',
+    'bband': 'BollingerBands',
+    'stochrsi': 'StochasticRelativeStrengthIndex'
 }
 
 traders = {
-    'zerodha': 'ZerodhaTrader'
+    'zerodha': 'ZerodhaTrader',
+    'simulated': 'SimulatedTrader'
 }
