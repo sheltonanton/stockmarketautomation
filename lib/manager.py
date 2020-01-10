@@ -59,7 +59,7 @@ class TradeManager(Observer):
                     self.close_counter_trades(strategy=data)
                     for trade in self.strategies[data['_id']+"_"+data['token']]:
                             if(data.get('status') == 'on'):
-                                self.close_trades(stock=data['stock'], order_type=('sell' if data['type'] == 'buy' else 'sell'))
+                                self.close_trades(stock=data['token'], order_type=('sell' if data['type'] == 'buy' else 'sell'))
                                 price = trade['price']
                                 target = trade['target']
                                 stoploss = trade['stoploss']
