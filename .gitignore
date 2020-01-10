@@ -4,5 +4,5 @@ lib/__pycache__/
 __pycache__/
 client/node_modules/
 public/historical_data/
-file.log
 report.log
+file.log
