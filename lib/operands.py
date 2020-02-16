@@ -68,7 +68,7 @@ class Operand:
     def ca(self, other):
         #performing calculations for finding the crossed above for both operands
         if(self.p is None or other.p is None or self.d is None or other.d is None):
-            return False
+            return Operand(d=False)
         c1 = self.p - other.p
         c2 = self.d - other.d
         if(c1 < 0 and c2 > 0):
@@ -78,7 +78,7 @@ class Operand:
     def cb(self, other):
         #perform calculations for finding the crossed below for both operands
         if(self.p is None or other.p is None or self.d is None or other.d is None):
-            return False
+            return Operand(d=False)
         c1 = self.p - other.p
         c2 = self.d - other.d
         if(c1 > 0 and c2 < 0):
@@ -253,6 +253,7 @@ class Candle(Operand):
         Operand.__init__(self)
         self.timeperiod = int(args[0]) or 1
         self.dictKey = args[1]
+        self.prev = (len(args) > 2 and (int(args[2]) -1)) or -1
         self.candles = Candles(timeperiod=self.timeperiod)
 
     def update(self, d):
@@ -276,8 +277,8 @@ class Candle(Operand):
             self.candles.add_price(_low, time = _time)
             self.candles.add_price(_close, time = _time + _interval)
 
-            candle = self.candles.get_last_candles(count=1)
-            output = candle[0].get(self.dictKey) if candle else 0
+            candle = self.candles.get_last_candles(count=abs(self.prev)+1)
+            output = candle[self.prev].get(self.dictKey) if candle else 0
             output = d.get(self.dictKey)
             self.setd(output)
         return self
@@ -433,7 +434,7 @@ class SimpleMovingAverage(HistorisedCandle):
         d = self.d
         HistorisedCandle.update(self, data)
         if(self.is_new_candle_formed()):
-            data = self.candles.nd_last_candles(count=200)
+            data = self.candles.nd_last_candles(count=300)
             r = None
             try:
                 r = SMA(data['close'], self.period)

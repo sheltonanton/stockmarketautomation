@@ -228,6 +228,10 @@ class ZerodhaTrader(Trader):
         return False
 
     def trade(self, stock=None, otype=None, price=0, target=0, stoploss=0, quantity=1, params={}):
+        for key,order in self.orders.items():
+            if(not order.get('exitPrice')):
+                return False
+            
         Trader.trade(self, stock, otype, price, target,
                      stoploss, quantity, params)
         if(target is 0 and stoploss is not 0):
@@ -316,7 +320,8 @@ class SimulatedTrader(Trader, Observer):
             'entryTime': int(params.get('time')),
             'strategy': params.get("name"),
             'trades': list(map(lambda x: x['name'], params.get('trades'))),
-            'status': self.PENDING
+            'status': self.PENDING,
+            'lastData': params
         }
         #TODO TODO important for tracking orders
         stock_orders = self.orders.setdefault(int(params.get('token')), {})      
@@ -337,7 +342,8 @@ class SimulatedTrader(Trader, Observer):
             'original': not params.get('sm'),
             'strategy': params.get('name'),
             'trades': list(map(lambda x: x['name'], params.get('trades'))),
-            'status': self.PENDING
+            'status': self.PENDING,
+            'lastData': params
         }
         stock_orders = self.orders.setdefault(int(params.get('token')), {})
         order_id = str(uuid.uuid1())
@@ -360,7 +366,8 @@ class SimulatedTrader(Trader, Observer):
             'entryTime': int(params.get('time')),
             'strategy': params.get('name'),
             'trades': list(map(lambda x: x['name'], params.get('trades'))),
-            'status': self.PENDING
+            'status': self.PENDING,
+            'lastData': params
         }
         stock_orders = self.orders.setdefault(int(params.get('token')), {})
         order_id = str(uuid.uuid1())
@@ -372,6 +379,9 @@ class SimulatedTrader(Trader, Observer):
         }
 
     def trade(self, stock=None, otype=None, price=0, target=0, stoploss=0, quantity=1, params={}):
+        if(self.orders):
+            return None
+
         Trader.trade(self, stock, otype, price, target,
                      stoploss, quantity, params)
         if(target is 0 and stoploss is not 0):
@@ -423,7 +433,7 @@ class SimulatedTrader(Trader, Observer):
 
                     except Exception as e:
                         bt_logger.error("Exception occurred")
-                        bt_logger.error(e)
+                        bt_logger.exception(order.get('log'))
                     order.pop('log', None)
                     order.pop('lastData', None)
 

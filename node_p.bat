@@ -1,1 +1,1 @@
-npm test
+node --inspect ./bin/www

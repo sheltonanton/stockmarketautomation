@@ -39,7 +39,7 @@ q1 = Queue()
 dataFeed = DataFeed(save=True, filepath='D:\\programs\\nseTools\\zerodha\\output')
 process_args = ['C:\\Program Files\\nodejs\\node.exe','D:\\programs\\nseTools\\zerodha\\zerodha_socket.js']
 instruments = pd.read_csv("D:\\programs\\nseTools\\zerodha\\instruments.csv")
-history = History(url="https://kitecharts-aws.zerodha.com/api/chart/{}/{}?from={}&to={}", instruments=instruments)
+history = History(url="https://kite.zerodha.com/oms/instruments/historical/{}/{}?from={}&to={}", instruments=instruments)
 
 #for live trade
 sm = StrategyManager(outputPipe=q1)
@@ -220,8 +220,8 @@ def run_backtest(data, result):
     trades = {}
     for s in data.get('strategies'):
         if(s.get('trades')):
-            s['trades'] = list(map(lambda x: x.update({'trader':'simulated'}) or x, s['trades']))
-            trades[s['_id']+"_"+s['token']] = s['trades']
+            s['trades'] = list(map(lambda x: x.update({'trader':'simulated', 'strategy': s['name']}) or x, s['trades']))
+            trades[s['_id']+"_"+s['token']] = s['trades'] #TODO need to generalize it for extending more
         if(not backtestdata.get(s['token'])):
             d = history.get_raw_data(
                 s["token"],

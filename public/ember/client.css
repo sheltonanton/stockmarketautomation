@@ -75,6 +75,8 @@ li:hover,
     padding: 8px;
     border-right: 1px solid #ddd;
     font-size: 20px;
+    overflow-y: auto;
+    height: 400px;
 }
     .left-tree-panel {
         position: absolute;
@@ -123,5 +125,6 @@ li:hover,
     
     .tab-display {
         /* border: 1px solid #ddd; */
+        overflow-y: auto;
         height: 472px;
     }

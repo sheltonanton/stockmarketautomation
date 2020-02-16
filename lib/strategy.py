@@ -74,14 +74,6 @@ class StrategyManager(Observer):
             args = strategy,)
         return strategy
 
-    def get_chart(self):
-        chart = {}
-        for key in self.stocks:
-            chart[key] = {}
-            for strategy in self.stocks[key]:
-                chart[key][strategy.name] = strategy.get_figure()
-        return chart
-
 class Strategy:
     def __init__(self, operation=None, begin_on=Operation(operator='none'), end_on=Operation(operator='none'), args={}, name=None):
         self.name = (name or args.get('name') or 'Strategy')
@@ -92,10 +84,6 @@ class Strategy:
         self.end_on = end_on
         self.phase = 'sleeping'
         self.args = args
-
-        fig, ax = plt.subplots()
-        self.chart_ref = ax
-        self.chart_fig = fig
 
     def begin(self, data):
         # print("B - {} - {}".format(data['token'], datetime.fromtimestamp(int(data.get('time'))).strftime("%d-%m-%Y %H:%M:%S")))
@@ -145,12 +133,3 @@ class Strategy:
             if(r and r.d == True):
                 logger.info("{} {} - {} {}".format(datetime.fromtimestamp(int(data['time'])).strftime("%d-%m-%Y %H:%M"), data['token'], self.name, self.operation))
         return r
-
-    def chart(self, x):
-        return self.operation.chart(self.chart_ref, x)
-
-    def get_chart(self):
-        return self.chart_ref
-
-    def get_figure(self):
-        return self.chart_fig

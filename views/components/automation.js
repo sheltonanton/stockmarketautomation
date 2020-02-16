@@ -92,6 +92,35 @@ async function auto_backtest(input) {
     result = await send_json('/auto/backtest', 'post', JSON.stringify({
         data: data
     }))
+    auto_backtest_display_result(result)
+}
+async function auto_backtest_display_result(result){
+    var display = document.getElementById('backtest_display')
+    var report = result.report;
+    for(var r of report){
+        var row = document.createElement('p');
+        row.innerHTML = `<div>${r.strategy}</div>`;
+        var content = document.createElement('ul');
+        var stocks = {}
+        for(var t of r.trades){
+            let diff = (t['exitPrice'] - t['entryPrice']) * ((t['type'] == 'buy')? 1: -1)
+            if(!stocks[t['stock']]) stocks[t['stock']] = {profit: 0, loss: 0}
+            if(diff > 0){
+                stocks[t['stock']].profit = stocks[t['stock']].profit + diff
+            }else{
+                stocks[t['stock']].loss = stocks[t['stock']].loss + diff
+            }
+        }
+        for(var s in stocks){
+            var li = document.createElement('li');
+            li.innerHTML = `
+                Stock: ${s}, Profit: ${stocks[s]['profit']}, Loss: ${stocks[s]['loss']}
+            `
+            content.appendChild(li);
+        }
+        row.appendChild(content);
+        display.appendChild(row);
+    }
 }
 
 async function auto_stop_process(){

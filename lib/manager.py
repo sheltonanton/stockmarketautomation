@@ -111,7 +111,8 @@ class TradeManager(Observer):
             'target': target,
             'stoploss': stoploss,
             'quantity': quantity,
-            'trader': trader
+            'trader': trader,
+            'strategy': trade.get('strategy')
         }
         return trade
 
@@ -161,7 +162,7 @@ class TradeManager(Observer):
                 trader = trade['trader']
                 report = trader.get_report()
                 final_report.append({
-                    "strategy": key,
+                    "strategy": trade['strategy'],
                     'trades': report
                 })
         return final_report
