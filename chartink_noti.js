@@ -5,7 +5,6 @@ const {
     JSDOM
 } = jsdom
 const Zerodha = require('./zerodha_orders')
-zt = new Zerodha('RF5775', 'praveena', '270796')
 (async function(){
     await zt.connect();
     response = await zt.login();
