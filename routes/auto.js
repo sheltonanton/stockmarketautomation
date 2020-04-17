@@ -1,8 +1,6 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
-const Strategy = require('../models/strategy')
-const Trade = require('../models/trade')
 const Entry = require('../models/entry')
 var pyscript = null;
 
@@ -51,7 +49,8 @@ router.get('/start_automation', async function(req, res, next){
     })
     data = {
         strategies: s,
-        stocks
+        stocks,
+        auth: express.zt.getAuth()
     }
     pyscript && pyscript.process_data('start_automation', data, (result, err) => {
         express.ws_write("Started Automation")
@@ -60,6 +59,13 @@ router.get('/start_automation', async function(req, res, next){
     })
     !pyscript && process_not_started(res);
 })
+
+/* AN ENDPOINT TO RECEIVE THE STOCK TICKS */
+router.post('/send_feed', function(req, res, next){
+    let data = req.body;
+    express.ws_write(data, null, "feed");
+    next();
+});
 
 /* RUN AUTOMATION AS SIMULATION */
 router.get('/simulate', async function(req, res, next){

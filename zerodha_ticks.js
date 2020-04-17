@@ -1,6 +1,8 @@
 const jsdom = require('jsdom');
 const {JSDOM} = jsdom;
 var websocket = null;
+var window = null;
+
 async function mainFunc(callbacks){
 	let promise = JSDOM.fromURL('http://kite.zerodha.com', {
     refererer: 'http://kite.zerodha.com',
@@ -12,7 +14,51 @@ async function mainFunc(callbacks){
     resources: "usable" //for executing external scripts
   })
 let dom = await promise;
-var window = dom.window
+window = dom.window
+
+Date.prototype.yyyymmdd = function () {
+    var mm = this.getMonth() + 1; // getMonth() is zero-based
+    var dd = this.getDate();
+
+    return [this.getFullYear(),
+        (mm > 9 ? '' : '0') + mm,
+        (dd > 9 ? '' : '0') + dd
+    ].join('-');
+};
+
+function fetch(url, options) {
+    promise = new Promise((resolve, reject) => {
+        req = new this.window.XMLHttpRequest()
+        req.onreadystatechange = function () {
+            if (this.readyState == 4) {
+                if (this.status == 200) {
+                    try {
+                        resolve(req.response && JSON.parse(req.response))
+                    } catch (err) {
+                        reject({
+                            err,
+                            response: req.response
+                        })
+                    }
+                } else {
+                    reject({
+                        err: this.status,
+                        response: req.response
+                    })
+                }
+            }
+        };
+        req.open(options.method, url)
+        Object.keys(options.headers || {}).forEach(key => {
+            req.setRequestHeader(key, options.headers[key])
+        })
+        if (options.body) req.send(options.body);
+        else req.send();
+    })
+    return promise;
+}
+
+window.fetch = fetch.bind(window)
 
 var r = function() {
     function t() {
@@ -368,11 +414,65 @@ async function startSocket(callbacks){
     return websocket
 }
 
-function subscribe(ws, ids){
+function subscribe(callbacks, ws, ids, auth) {
+    ids.forEach(async function(id){
+        //get 1 minute historical data from all the stocks for the past 50 days
+        //change the data format and send it accordingly
+        let historical = await fetchHistoricalData(id, auth);
+        callbacks.onmessage(historical);
+    })
     ws.send(JSON.stringify({
         a: "subscribe",
         v: ids
     }))
+}
+
+async function fetchHistoricalData(id, auth) {
+    var to = new Date();
+    var from = new Date(to - (21 * 24 * 60 * 60 * 1000));
+    var quotes = [];
+    for (var i=0; i<1; i++) {
+        try{
+            var quote = await window.fetch(`https://kite.zerodha.com/oms/instruments/historical/${id}/minute?user_id=IV8690&oi=1&from=${from.yyyymmdd()}&to=${to.yyyymmdd()}`, {
+                "headers": {
+                    "authorization": auth,
+                    "cache-control": "no-cache",
+                    "pragma": "no-cache",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-origin"
+                },
+                "referrer": "https://kite.zerodha.com/static/build/chart.html?v=2.4.0",
+                "referrerPolicy": "no-referrer-when-downgrade",
+                "body": null,
+                "method": "GET",
+                "mode": "cors"
+            });
+            to = new Date(from - (24 * 60 * 60 * 1000));
+            from = new Date(to - (21 * 24 * 60 * 60 * 1000));
+            quotes = quote.data.candles.concat(quotes);
+        }catch(e){
+            console.log(e);
+        }
+    }
+    quotes = quotes.map(quote => {
+        let [date, open, high, low, close, volume] = quote;
+        date = parseInt(new Date(date).getTime()/1000);
+        let o = {
+            open,
+            high,
+            low,
+            close,
+            time: date,
+            sm: false,
+            isCandle: true,
+            interval: 60,
+            token: id,
+            noTrade: true
+        }
+        return o;
+    })
+    return quotes;
 }
 
 module.exports = {

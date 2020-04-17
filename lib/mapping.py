@@ -1,5 +1,6 @@
 urls = {
     'start_process': 'http://localhost:3000/auto/start_process',
+    'send_feed': 'http://localhost:3000/auto/send_feed',
     'order_bo': 'http://localhost:3000/order/bo',
     'order_co': 'http://localhost:3000/order/co',
     'order_regular': 'http://localhost:3000/order/regular',
@@ -18,7 +19,8 @@ operands = {
     'sma': 'SimpleMovingAverage',
     'ema': 'ExponentialMovingAverage',
     'bband': 'BollingerBands',
-    'stochrsi': 'StochasticRelativeStrengthIndex'
+    'stochrsi': 'StochasticRelativeStrengthIndex',
+    'max': 'Maximum'
 }
 
 traders = {

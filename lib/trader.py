@@ -210,7 +210,7 @@ class ZerodhaTrader(Trader):
         return None
 
     def update(self, data):
-        for key,order in self.orders.items():
+        for _,order in self.orders.items():
             if(int(order['token']) == int(data['token'])):
                 order['lastData'] = data
 
@@ -228,7 +228,7 @@ class ZerodhaTrader(Trader):
         return False
 
     def trade(self, stock=None, otype=None, price=0, target=0, stoploss=0, quantity=1, params={}):
-        for key,order in self.orders.items():
+        for _,order in self.orders.items():
             if(not order.get('exitPrice')):
                 return False
             
@@ -254,14 +254,14 @@ class ZerodhaTrader(Trader):
 
     def close_all_trades(self, order_type):
         try:
-            for key,order in self.orders.items():
+            for _,order in self.orders.items():
                 if(order_type == order['type']):
                     params = {
                         'variety': order['variety'],
                         'order_id': order['id'],
                         'original': order['original']
                     }
-                    r = requests.delete(urls['order_{}'.format(order['variety'])], json=params)
+                    requests.delete(urls['order_{}'.format(order['variety'])], json=params)
                     order['exitPrice'] = order.get('lastData').get('price')
                     order['exitTime'] = order.get('lastData').get('time')
             return True

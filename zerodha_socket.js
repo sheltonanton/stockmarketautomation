@@ -1,28 +1,40 @@
-const socket = require('./zerodha_ticks')
+const ticks = require('./zerodha_ticks')
 const ERROR = "error";
 const CLOSE = "exit";
+const HISTORICAL_DATA = "historical_data";
 const SUBSCRIPTION = "subscription";
 
 (async function(){
+    
     console.olog = function (message) {
         console.log(JSON.stringify({
             ...message
         }))
     }
     var websocket = new Promise((resolve, reject) => {
-        var ws = socket.startSocket({
-            onopen: function(){
-                resolve(ws)
+        var ws;
+        const callbacks = {
+            onopen: async function () {
+                ws = await ws;
+                resolve({ws, callbacks})
             },
-            onmessage: function(data){
-                data = JSON.parse(data)
-                if(Array.isArray(data)){
-                    console.olog({status: 'success', data})
-                }else if(data.console){
-                    console.olog({status: 'console', data: data.message})
+            onmessage: function (data) {
+                if(typeof data == 'string')
+                    data = JSON.parse(data)
+                if (Array.isArray(data)) {
+                    console.olog({
+                        status: 'success',
+                        data
+                    })
+                } else if (data.console) {
+                    console.olog({
+                        status: 'console',
+                        data: data.message
+                    })
                 }
             }
-        })
+        };
+        ws = ticks.startSocket(callbacks);
     })
 
     promise = new Promise((resolve, reject) => {
@@ -31,6 +43,10 @@ const SUBSCRIPTION = "subscription";
             switch (input.status) {
                 case CLOSE: {
                     close(resolve)
+                    break;
+                }
+                case HISTORICAL_DATA: {
+                    ticks.get_historical_data(input);
                     break;
                 }
                 default: {
@@ -42,19 +58,23 @@ const SUBSCRIPTION = "subscription";
     })
 
     function input_data(input) {
-        websocket.then(ws => {
+        websocket.then(({ws, callbacks}) => {
             console.olog({
                 status: 'info',
                 data: "web socket connected"
             })
+            let {
+                ids,
+                auth
+            } = input
             if (input.status == SUBSCRIPTION) {
-                socket.subscribe(ws, input.data)
+                ticks.subscribe(callbacks, ws, ids, auth)
             }
         })
     }
 
     function close(resolve) {
-        websocket.then(ws => {
+        websocket.then(({ws, callbacks}) => {
             ws.close();
             resolve();
             console.olog({

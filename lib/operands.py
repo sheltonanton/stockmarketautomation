@@ -15,6 +15,7 @@ import logging
 #this class sould be used for just simple numbers
 #should be ovverridden if indicators and some extra functionality to be used
 bt_logger = logging.getLogger('backtestLogger')
+logger = logging.getLogger('flowLogger')
 class Operand:
     def __init__(self, d=None, p=None):
         self.p = p
@@ -257,39 +258,45 @@ class Candle(Operand):
         self.candles = Candles(timeperiod=self.timeperiod)
 
     def update(self, d):
-        if(not d.get('isCandle')):
-            self.candles.add_price(d['price'], time=d['time'])
-            candle = self.candles.get_last_candles(count=1)
-            output = candle[0].get(self.dictKey) if candle else 0
-            if(self.dictKey=='time'):
-                if(not output):
-                    output = datetime.strptime("06:00","%H:%M").time()
-            self.setd(output)
-        else:
-            _open = d['open']
-            _close = d['close']
-            _high = d['high']
-            _low = d['low']
-            _interval = d['interval']
-            _time = d['time']
-            self.candles.add_price(_open, time = _time)
-            self.candles.add_price(_high, time = _time)
-            self.candles.add_price(_low, time = _time)
-            self.candles.add_price(_close, time = _time + _interval)
-
-            candle = self.candles.get_last_candles(count=abs(self.prev)+1)
-            output = candle[self.prev].get(self.dictKey) if candle else 0
-            output = d.get(self.dictKey)
-            self.setd(output)
+        try:
+            if(not d.get('isCandle')):
+                self.candles.add_price(d['price'], time=d['time'])
+                candle = self.candles.get_last_candles(count=1)
+                output = candle[0].get(self.dictKey) if candle else 0
+                if(self.dictKey=='time'):
+                    if(not output):
+                        output = datetime.strptime("06:00","%H:%M").time()
+                self.setd(output)
+            else:
+                _open = d['open']
+                _close = d['close']
+                _high = d['high']
+                _low = d['low']
+                _interval = d['interval']
+                _time = d['time']
+                self.candles.add_price(_open, time = _time)
+                self.candles.add_price(_high, time = _time)
+                self.candles.add_price(_low, time = _time)
+                self.candles.add_price(_close, time = _time + _interval)
+                # if(self.prev < -1):
+                #     pdb.set_trace()
+                candle = self.candles.get_last_candles(count=abs(self.prev)+1)
+                output = candle[self.prev].get(self.dictKey) if len(candle) >= abs(self.prev) else 0
+                self.setd(output)
+        except Exception as e:
+            logger.exception(e)
         return self
 
     def candle_formed(self, candle, t):
         print(candle)
         print(t)
 
-    # def __str__(self):
-    #     candle = self.candles.get_last_candles(count=1)[0]
-    #     return "Candle({},{},{},{},{})".format(candle.get('open'), candle.get('high'), candle.get('low'), candle.get('close'), candle.get('time'))
+    def __str__(self):
+        candle = self.candles.get_last_candles(count=abs(self.prev)+1)
+        if(len(candle) >= abs(self.prev)):
+            candle = candle[self.prev]
+            return "Candle({},{},{},{},{},{},{})".format(self.prev+1, self.dictKey, candle.get('open'), candle.get('high'), candle.get('low'), candle.get('close'), candle.get('time'))
+        return "Candle({},{},{},{},{})".format(0,0,0,0,0)
 
 #make this async
 #for now loading the data on the rounded time
@@ -350,6 +357,11 @@ class HistorisedCandle(Candle):
         value = (self.candles.get_candles_count() > self.candles_count)
         self.candles_count = self.candles.get_candles_count()
         return value
+
+#loading previous data is the duty of the data feed
+#update is called for every tick
+#extending candle will give candle functionality
+#should change current and previous value, so that indication occurs
 
 class MovingAverageConvergenceDivergence(HistorisedCandle):
     '''[args] (fastperiod, slowperiod, signalperiod, output) '''
@@ -553,3 +565,46 @@ class StochasticRelativeStrengthIndex(HistorisedCandle):
     def __str__(self):
         operand = Operand.__str__(self)
         return "STOCHASTICS({},{},{}){} - data {}".format(self.period, self.fastkperiod, self.fastdperiod, operand, self.last_price)
+
+class Maximum(HistorisedCandle):
+    def __init__(self, args=[]):
+        HistorisedCandle.__init__(self, args[0:3])
+        self.candle_period = args[0]
+        self.candle_part = args[1]
+        self.candle_position = args[2] or 0
+        self.max_period = int(args[3]) or 1
+        #load candle with previous data for slowperiod + signalperiod
+        self.has_loaded = False
+
+    def update(self, data):
+        try:
+            d = self.d
+            HistorisedCandle.update(self, data)
+            if(self.is_new_candle_formed()):
+                max_period = self.max_period
+                if(type(self.max_period) == str):
+                    max_period = self.get_candles_count_till(self.max_period, data['time'], self.candle_period)
+                    
+                data = self.candles.nd_last_candles(count=max_period + (abs(self.candle_position)))
+                maximum = data['high'][0]
+                for x in range(self.max_period+1):
+                    if(x > maximum):
+                        maximum = x
+                self.p = self.d
+                self.d = maximum
+        except Exception as e:
+            logger.exception(e)
+        return self
+
+    def get_candles_count_till(self, string, time, time_type):
+        t1 = datetime.datetime.strptime(string, "%H:%M").time()
+        t2 = datetime.datetime.fromtimestamp(time).time()
+        req = 0
+        minute = (t2.minute + (t2.hour * 60)) - (t1.minute + (t1.hour * 60))
+        minute = 0 if minute < 0 else minute
+        req = minute / int(time_type)
+        return req
+        
+    def __str__(self):
+        operand = Operand.__str__(self)
+        return "Maximum({},{},{},{}){} - data {}".format(self.candle_period, self.candle_part, self.candle_position, self.max_period, operand, self.last_price)

@@ -1,0 +1,3 @@
+[2020-04-17 15:41:06,609 flowLogger] - INFO - Attached to dataFeed; <strategy.StrategyManager object at 0x0DF9A9D0>
+[2020-04-17 15:41:06,610 flowLogger] - INFO - Attached to dataFeed; <manager.TradeManager object at 0x0DF9AA30>
+[2020-04-17 15:41:06,610 flowLogger] - INFO - Started Automation

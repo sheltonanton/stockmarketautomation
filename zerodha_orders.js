@@ -129,6 +129,10 @@ try{
         console.log(err)
       }
     }
+
+    // async function getChart(token, type, from, to){
+    //   this.fetch("https://kite.zerodha.com/oms/instruments/historical/2714625/15minute?user_id=IV8690&oi=1&from=2020-02-03&to=2020-02-19&ciqrandom=1582109593327", { "accept": "*/*", "accept-language": "en-GB,en-US;q=0.9,en;q=0.8,da;q=0.7", "authorization": "enctoken +LpGWbIvw/Gq9QRe+MEfXTzlTGzeaGFvwAstYS44wq/8ao4mwyW+HPgmGOl+Sp4u7cw9Dzaz5aiFTPPiqj5mkmWpvmRybg==", "cache-control": "no-cache", "pragma": "no-cache", "sec-fetch-dest": "empty", "sec-fetch-mode": "cors", "sec-fetch-site": "same-origin" }, "referrer": "https://kite.zerodha.com/static/build/chart.html?v=2.4.0", "referrerPolicy": "no-referrer-when-downgrade", "body": null, "method": "GET", "mode": "cors" });
+    // }
     
     function getAuth(){
         let cookies = this.window.document.cookie.split('; ');

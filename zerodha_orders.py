@@ -32,12 +32,13 @@ from strategy import StrategyManager
 
 logger = logging.getLogger('flowLogger')
 reportLogger = logging.getLogger('reportLogger')
+feedLogger = logging.getLogger('feedLogger')
 q1 = q2 = None
 sm = tm = ssm = stm = None
 q1 = Queue()
 
 dataFeed = DataFeed(save=True, filepath='D:\\programs\\nseTools\\zerodha\\output')
-process_args = ['C:\\Program Files\\nodejs\\node.exe','D:\\programs\\nseTools\\zerodha\\zerodha_socket.js']
+process_args = ['C:\\Program Files\\nodejs\\node.exe', '--inspect=7000', 'D:\\programs\\nseTools\\zerodha\\zerodha_socket.js']
 instruments = pd.read_csv("D:\\programs\\nseTools\\zerodha\\instruments.csv")
 history = History(url="https://kite.zerodha.com/oms/instruments/historical/{}/{}?from={}&to={}", instruments=instruments)
 
@@ -96,22 +97,27 @@ def start_ws_stream(data={}, result={}, load_past = True):
     global storage
     (chi, par) = Pipe(True)
     pipe = WebSocketPipe(process_args, par, chi)
-    buffer = Buffer()
+    # buffer = Buffer()
     storage['ws_pipe'] = pipe
-    thread = Thread(target=web_socket, args=(pipe, buffer))
+    thread = Thread(target=web_socket, args=(pipe, None))
     thread.start()
 
     tokens = []
+    t_t_s = {}
     stocks = None
+    auth = None
     if(data):
         stocks = data['stocks']
+        auth = data['auth']
     else:
         r = requests.get(urls['stocks'])
         stocks = json.loads(r.content)['stocks']
+        #in the format
+        #{name: SYMBOL, token: TOKEN}
 
-    dm = DateManager()
-    current_time = dm.time(string_format="%Y-%m-%d")
-    past_time = dm.time(days=-2, string_format="%Y-%m-%d")
+    # dm = DateManager()
+    # current_time = dm.time(string_format="%Y-%m-%d")
+    # past_time = dm.time(days=-2, string_format="%Y-%m-%d")
 
     for stock in stocks:
         if stock:
@@ -123,38 +129,41 @@ def start_ws_stream(data={}, result={}, load_past = True):
                     stock['token'] = int(token)
                 else:
                     tokens.append(int(stock['token']))
+                t_t_s[int(stock['token'])] = stock['name']
             except:
                 print("Exception in {}".format(stock['name']))
     pipe_data = {
         'status': "subscription",
-        'data': tokens
+        'ids': tokens,
+        'auth': auth
     }
-    storage['tokens'] = tokens
-    storage['stocks'] = stocks
+    storage['tokens_to_symbols'] = t_t_s
+
     pipe.write(json.dumps(pipe_data))  # subscribed to the tokens in websocket
     #start the websocket streaming in nodejs process
-    for stock in stocks:  # load the historical data into the buffer
-        if stock:
-            try:
-                logger.info("Downloading historical data: {}".format(stock))
-                history_data = history.get_raw_data(
-                    stock['token'], 1, past_time, current_time)
-                live_data = buffer.get(int(stock['token'])) or []
-                last_history_data_time = int(datetime.strptime(history_data[-1][0], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
-                logger.info("Last History record: {}".format(history_data[-1]))
-                while(True):
-                    if(live_data):
-                        ld = int(live_data[0].get('time') or live_data[0].get('t'))
-                        if(ld < last_history_data_time + 60):
-                            live_data.pop(0)
-                    else:
-                        break
-                logger.info("Live data from buffer: {}".format(live_data))
-                history_data.extend(live_data)
-                buffer.store(int(stock['token']), history_data)
-            except Exception as e:
-                logger.exception(e)
-    buffer.start_stream()
+    # for stock in stocks:  # load the historical data into the buffer
+    #     if stock:
+    #         try:
+    #             logger.info("Downloading historical data: {}".format(stock))
+    #             history_data = history.get_raw_data(
+    #                 stock['token'], 1, past_time, current_time)
+    #             live_data = buffer.get(int(stock['token'])) or []
+    #             last_history_data_time = int(datetime.strptime(history_data[-1][0], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
+
+    #             logger.info("Last History record: {}".format(history_data[-1]))
+    #             while(True):
+    #                 if(live_data):
+    #                     ld = int(live_data[0].get('time') or live_data[0].get('t'))
+    #                     if(ld < last_history_data_time + 60):
+    #                         live_data.pop(0)
+    #                 else:
+    #                     break
+    #             logger.info("Live data from buffer: {}".format(live_data))
+    #             history_data.extend(live_data)
+    #             buffer.store(int(stock['token']), history_data)
+    #         except Exception as e:
+    #             logger.exception(e)
+    # buffer.start_stream()
     print("Websocket streaming started")
 
 def start_automation(data={}, result={}):
@@ -334,37 +343,43 @@ def web_socket(pipe, buffer=None):
      #record the live data for the process
     while(True):
         # try:
-        if buffer and buffer.stream:
-            for token in buffer.stream:
-            # list of data along with historical and currently stored ticks
-                ticks = buffer.stream[token]
-                for tick in ticks:
-                    a = {}
-                    a['time'], a['open'], a['high'], a['low'], a['close'], a['volume'] = tick
-                    a['sm'] = False
-                    a['isCandle'] = True
-                    a['time'] = int(datetime.strptime(
-                        a['time'], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
-                    a['interval'] = 60  # in seconds
-                    a['token'] = token
-                    a['noTrade'] = True
-                    dataFeed.notify(a)
-                logger.info("PAST DATA LOADED")
-            buffer.finish_stream()
+        # if buffer and buffer.stream:
+        #     for token in buffer.stream:
+        #     # list of data along with historical and currently stored ticks
+        #         ticks = buffer.stream[token]
+        #         for tick in ticks:
+        #             a = {}
+        #             a['time'], a['open'], a['high'], a['low'], a['close'], a['volume'] = tick
+        #             a['sm'] = False
+        #             a['isCandle'] = True
+        #             a['time'] = int(datetime.strptime(
+        #                 a['time'], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
+        #             a['interval'] = 60  # in seconds
+        #             a['token'] = token
+        #             a['noTrade'] = True
+        #             dataFeed.notify(a)
+        #         logger.info("PAST DATA LOADED")
+        #     buffer.finish_stream()
 
+        #reading from zerodha_ticks, whether live data or historical data
         data = pipe.read().decode('utf-8')
+        feedLogger.debug(data)
         data = json.loads(data)
+
         if(data['status'] == 'success'):
             if(type(data['data']) is list): #list for price data feed
                 for d in data['data']:
-                    if buffer.is_stream_finished():
-                        dataFeed.notify(d)
-                    else:
-                        stock = buffer.setdefault(int(d['token']), [])
-                        stock.append(d)
+                    # if buffer.is_stream_finished():
+                    d['symbol'] = storage['tokens_to_symbols'][int(d['token'])]
+                    dataFeed.notify(d)
+                    # requests.post(urls['send_feed'], json=d)
+                    # else:
+                    #     stock = buffer.setdefault(int(d['token']), [])
+                    #     stock.append(d)
 
-            if(type(data['data']) is dict): #dict for json object
+            if(type(data['data']) is dict): #dict for json object - such as feedback from websockets in case of zerodha, or any other meta data
                 tm.update(data['data'])
+
         if(data['status'] == 'exit'):
             write_to_node({
                 'handler': 'end_automation',

@@ -22,6 +22,26 @@ router.get('/backtest', function(req, res, next){
   res.render('backtest', {})
 });
 
+router.get('/entries_insert', function(req, res, next){
+  model = req.body;
+  stocks = model.stocks;
+    Entry.find({}, function(err, d){
+      for (var stock of stocks) {
+        for(var a of d){
+          Entry.create(data).then((r, err) => {
+            express.ws_write('SAVED ENTRY: ' + r._id)
+            if (!err) {
+              res.send({
+                entry: r
+              })
+            }
+          })
+        }
+      }
+    })
+  }
+)
+
 router.get('/properties/:property', function(req, res, next){
   params = req.params;
   property = params['property']
@@ -139,6 +159,11 @@ router.post('/zerodha/bo', function(req, res, next){
   }
 }) 
 
+router.get('/start_websocket', function(req, res, next){
+  express.init_ws();
+  next();
+})
+
 module.exports = router;
 
 //checking autologin
@@ -159,6 +184,7 @@ async function z_login(userid, password, pin){
 Property.findOne({
   key: 'autoLogin'
 }, function (err, d) {
+  express.init_ws();
   if (d.value == "true") {
     User.findOne({master: true}, async function(err, d){
       try{
