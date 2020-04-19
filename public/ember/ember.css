@@ -1,2 +1,6 @@
 @import "vendor.css";
 @import "client.css";
+
+#ember-app {
+    height: 514px;
+}

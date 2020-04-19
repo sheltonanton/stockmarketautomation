@@ -481,8 +481,96 @@
   _exports.default = void 0;
 
   var _default = Ember.Component.extend({
+    init: function () {
+      this._super(...arguments);
+
+      let template = '{"operand":{"func":"","args":""},"operation":{"left":{},"operator":"add","right":{}},"value":0}';
+      let input = {
+        price: JSON.parse(template),
+        target: JSON.parse(template),
+        stoploss: JSON.parse(template)
+      };
+      let constants = {
+        OPERAND: 'operand',
+        OPERATION: 'operation',
+        VALUE: null
+      };
+      this.setProperties({
+        input,
+        constants
+      });
+    },
+    priceComp: Ember.computed('trade.price', function () {
+      let price = this.get('trade.price');
+
+      if (typeof price == 'object') {
+        if (price.hasOwnProperty('func')) {
+          return 'operand';
+        } else {
+          return 'operation';
+        }
+      }
+
+      return null;
+    }),
+    targetComp: Ember.computed('trade.target', function () {
+      let target = this.get('trade.target');
+
+      if (typeof target == 'object') {
+        if (target.hasOwnProperty('func')) {
+          return 'operand';
+        } else {
+          return 'operation';
+        }
+      }
+
+      return null;
+    }),
+    stoplossComp: Ember.computed('trade.stoploss', function () {
+      let sl = this.get('trade.stoploss');
+
+      if (typeof sl == 'object') {
+        if (sl.hasOwnProperty('func')) {
+          return 'operand';
+        } else {
+          return 'operation';
+        }
+      }
+
+      return null;
+    }),
     actions: {
-      changed: function () {}
+      changed: function () {},
+      add: function (event, type) {
+        let comp = this.get("".concat(type, "Comp"));
+
+        if (comp == 'operand') {
+          let data = this.get('trade')[type];
+          data = {
+            left: data,
+            operator: '',
+            right: {}
+          };
+          Ember.set("trade.".concat(type), data);
+        }
+      },
+      close: function (event) {
+        console.log(event);
+      },
+      toggleLogic: function (type) {
+        let component = this.get("".concat(type, "Comp"));
+
+        if (component == this.constants.VALUE) {
+          this.input[type].value = this.get('trade')[type];
+          Ember.set(this.get("trade"), type, this.input[type].operand);
+        } else if (component == this.constants.OPERAND) {
+          this.input[type].operand = this.get('trade')[type];
+          Ember.set(this.get("trade"), type, this.input[type].operation);
+        } else if (component == this.constants.OPERATION) {
+          this.input[type].operation = this.get('trade')[type];
+          Ember.set(this.get("trade"), type, this.input[type].value);
+        }
+      }
     }
   });
 
@@ -500,7 +588,8 @@
     nothing: null,
     didInsertElement: function () {
       let ul = document.getElementById('trade-list');
-      Array.from(ul.children)[0].click();
+      ul = Array.from(ul.children);
+      if (ul.length > 0) ul[0].click();
     },
     actions: {
       showTrade: function (trade) {
@@ -533,7 +622,6 @@
         }
 
         if (trade.get('isNew')) {
-          console.log(trade);
           trade.unloadRecord();
         } else {
           confirm("Do you want to delete?") && trade.destroyRecord();
@@ -1173,6 +1261,7 @@
       this.route('strategy');
       this.route('trade');
       this.route('entry', function () {});
+      this.route('backtest');
     });
   });
   var _default = Router;
@@ -1186,11 +1275,7 @@
   });
   _exports.default = void 0;
 
-  var _default = Ember.Route.extend({
-    beforeModel: function () {
-      this.transitionTo('dashboard.entry');
-    }
-  });
+  var _default = Ember.Route.extend({});
 
   _exports.default = _default;
 });
@@ -1213,10 +1298,25 @@
       }, {
         display: "Trade",
         route: "dashboard.trade"
+      }, {
+        display: 'BackTesting',
+        route: "dashboard.backtest"
       }];
       return model;
     }
   });
+
+  _exports.default = _default;
+});
+;define("client/routes/dashboard/backtest", ["exports"], function (_exports) {
+  "use strict";
+
+  Object.defineProperty(_exports, "__esModule", {
+    value: true
+  });
+  _exports.default = void 0;
+
+  var _default = Ember.Route.extend({});
 
   _exports.default = _default;
 });
@@ -1229,6 +1329,7 @@
   _exports.default = void 0;
 
   var _default = Ember.Route.extend({
+    beforeModel: function () {},
     model: function () {
       return Ember.RSVP.hash({
         entries: this.store.findAll("entry"),
@@ -1266,6 +1367,7 @@
   _exports.default = void 0;
 
   var _default = Ember.Route.extend({
+    beforeModel: function () {},
     model: function () {
       return this.store.findAll('trade');
     }
@@ -1371,31 +1473,43 @@
 
   var _default = _application.default.extend({
     normalize: function (modelClass, resourceHash) {
-      // resourceHash.operation = resourceHash.operation && this.get_as_object(JSON.parse(resourceHash.operation))
-      // resourceHash.beginOn = resourceHash.beginOn && this.get_as_object(JSON.parse(resourceHash.beginOn))
-      // resourceHash.endOn = resourceHash.endOn && this.get_as_object(JSON.parse(resourceHash.endOn))
-      resourceHash.price = resourceHash.price && this.get_as_object(JSON.parse(resourceHash.price)[0]) || {};
+      resourceHash.price = resourceHash.price && typeof resourceHash.price == 'string' && this.get_as_object(JSON.parse(resourceHash.price)[0]) || resourceHash.price || {};
+      resourceHash.target = resourceHash.target && typeof resourceHash.target == 'string' && this.get_as_object(JSON.parse(resourceHash.target)[0]) || resourceHash.target || {};
+      resourceHash.stoploss = resourceHash.stoploss && typeof resourceHash.stoploss == 'string' && this.get_as_object(JSON.parse(resourceHash.stoploss)[0]) || resourceHash.stoploss || {};
       return this._super(modelClass, resourceHash);
     },
     serialize: function (snapshot, options) {
       let r = this._super(snapshot, options);
 
-      r = JSON.parse(JSON.stringify(r));
-      r.price.args = r.price.args && r.price.args.split(',');
-      r.price = JSON.stringify([r.price]);
+      r.price = this.getSerialized(r.price);
+      r.target = this.getSerialized(r.target);
+      r.stoploss = this.getSerialized(r.stoploss);
       return r;
     },
-    get_as_object: function (array) {
+    getSerialized: function (value) {
+      if (typeof value == 'string' || typeof value == 'number') {
+        return parseFloat(value);
+      } else if (value.hasOwnProperty('func')) {
+        value = JSON.parse(JSON.stringify(value));
+        console.log(value);
+        return JSON.stringify([(value.args = value.args.split(','), value)]);
+      } else {
+        return JSON.stringify(this.get_as_array(value));
+      }
+    },
+    get_as_object: function (value) {
       var object = {};
 
-      if (Array.isArray(array)) {
-        object['left'] = this.get_as_object(array[0]);
-        object['right'] = this.get_as_object(array[2]);
-        object['operator'] = array[1];
-      } else {
-        object = array;
+      if (Array.isArray(value)) {
+        object['left'] = this.get_as_object(value[0]);
+        object['right'] = this.get_as_object(value[2]);
+        object['operator'] = value[1];
+      } else if (typeof value == 'object') {
+        object = value;
         object.args = object.args || [];
         object.args = object.args.join(',');
+      } else {
+        object = [value];
       }
 
       return object;
@@ -1627,8 +1741,8 @@
   _exports.default = void 0;
 
   var _default = Ember.HTMLBars.template({
-    "id": "4wIR+m29",
-    "block": "{\"symbols\":[],\"statements\":[[7,\"div\",true],[10,\"class\",\"list-item\"],[8],[0,\"\\n    \"],[7,\"div\",true],[10,\"class\",\"list-label\"],[8],[0,\"Name\"],[9],[0,\"\\n    \"],[1,[28,\"input\",null,[[\"type\",\"value\"],[\"text\",[24,[\"trade\",\"name\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\"],[7,\"div\",true],[10,\"class\",\"list-item\"],[8],[0,\"\\n    \"],[7,\"div\",true],[10,\"class\",\"list-label\"],[8],[0,\"Price\"],[9],[0,\"\\n\"],[4,\"if\",[[24,[\"trade\",\"price\"]]],null,{\"statements\":[[0,\"        \"],[1,[28,\"operand\",null,[[\"data\"],[[24,[\"trade\",\"price\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]},null],[9]],\"hasEval\":false}",
+    "id": "Jv6I9lrD",
+    "block": "{\"symbols\":[],\"statements\":[[7,\"div\",true],[10,\"class\",\"list-item\"],[8],[0,\"\\n    \"],[7,\"div\",true],[10,\"class\",\"list-label\"],[8],[0,\"Name\"],[9],[0,\"\\n    \"],[1,[28,\"input\",null,[[\"type\",\"value\"],[\"text\",[24,[\"trade\",\"name\"]]]]],false],[0,\"\\n\"],[9],[0,\"\\n\"],[7,\"div\",true],[10,\"class\",\"list-item\"],[8],[0,\"\\n    \"],[7,\"div\",true],[10,\"class\",\"list-label\"],[8],[0,\"Price\"],[9],[0,\"\\n\"],[4,\"if\",[[24,[\"priceComp\"]]],null,{\"statements\":[[0,\"        \"],[1,[28,\"component\",[[24,[\"priceComp\"]]],[[\"data\",\"add\"],[[24,[\"trade\",\"price\"]],[28,\"action\",[[23,0,[]],\"add\",\"price\"],null]]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[28,\"input\",null,[[\"type\",\"value\"],[\"text\",[24,[\"trade\",\"price\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[7,\"button\",false],[3,\"action\",[[23,0,[]],\"toggleLogic\",\"price\"]],[8],[0,\"Toggle\"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[7,\"div\",true],[10,\"class\",\"list-item\"],[8],[0,\"\\n    \"],[7,\"div\",true],[10,\"class\",\"list-label\"],[8],[0,\"Target\"],[9],[0,\"\\n\"],[4,\"if\",[[24,[\"targetComp\"]]],null,{\"statements\":[[0,\"        \"],[1,[28,\"component\",[[24,[\"targetComp\"]]],[[\"data\",\"add\"],[[24,[\"trade\",\"target\"]],[28,\"action\",[[23,0,[]],\"add\",\"target\"],null]]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[28,\"input\",null,[[\"type\",\"value\"],[\"text\",[24,[\"trade\",\"target\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[7,\"button\",false],[3,\"action\",[[23,0,[]],\"toggleLogic\",\"target\"]],[8],[0,\"Toggle\"],[9],[0,\"\\n\"],[9],[0,\"\\n\"],[7,\"div\",true],[10,\"class\",\"list-item\"],[8],[0,\"\\n    \"],[7,\"div\",true],[10,\"class\",\"list-label\"],[8],[0,\"Stop Loss\"],[9],[0,\"\\n\"],[4,\"if\",[[24,[\"stoplossComp\"]]],null,{\"statements\":[[0,\"        \"],[1,[28,\"component\",[[24,[\"stoplossComp\"]]],[[\"data\",\"add\"],[[24,[\"trade\",\"stoploss\"]],[28,\"action\",[[23,0,[]],\"add\",\"stoploss\"],null]]]],false],[0,\"\\n\"]],\"parameters\":[]},{\"statements\":[[0,\"        \"],[1,[28,\"input\",null,[[\"type\",\"value\"],[\"text\",[24,[\"trade\",\"stoploss\"]]]]],false],[0,\"\\n\"]],\"parameters\":[]}],[0,\"    \"],[7,\"button\",false],[3,\"action\",[[23,0,[]],\"toggleLogic\",\"stoploss\"]],[8],[0,\"Toggle\"],[9],[0,\"\\n\"],[9]],\"hasEval\":false}",
     "meta": {
       "moduleName": "client/templates/components/trade-component.hbs"
     }
@@ -1667,6 +1781,24 @@
     "block": "{\"symbols\":[],\"statements\":[[4,\"tab-component\",null,[[\"tabs\"],[[24,[\"model\"]]]],{\"statements\":[[0,\"    \"],[1,[22,\"outlet\"],false],[0,\"\\n\"]],\"parameters\":[]},null]],\"hasEval\":false}",
     "meta": {
       "moduleName": "client/templates/dashboard.hbs"
+    }
+  });
+
+  _exports.default = _default;
+});
+;define("client/templates/dashboard/backtest", ["exports"], function (_exports) {
+  "use strict";
+
+  Object.defineProperty(_exports, "__esModule", {
+    value: true
+  });
+  _exports.default = void 0;
+
+  var _default = Ember.HTMLBars.template({
+    "id": "4ce/qMSf",
+    "block": "{\"symbols\":[],\"statements\":[[1,[22,\"outlet\"],false]],\"hasEval\":false}",
+    "meta": {
+      "moduleName": "client/templates/dashboard/backtest.hbs"
     }
   });
 
@@ -1767,7 +1899,7 @@ catch(err) {
 
 ;
           if (!runningTests) {
-            require("client/app")["default"].create({"LOG_TRANSITIONS":true,"name":"client","version":"0.0.0+ac4f3d60"});
+            require("client/app")["default"].create({"LOG_TRANSITIONS":true,"rootElement":"#ember-app","name":"client","version":"0.0.0+6a4a5364"});
           }
         
 //# sourceMappingURL=client.map

@@ -237,8 +237,11 @@ class Candles:
     def set_max_candles(self, max_candles=0):
         self.max_candles = max_candles
 
-    def get_last_candles(self, count=1):
-        return self.candles[-count:]
+    def get_last_candles(self, count=1, offset=0):
+        if(offset < 0):
+            return self.candles[-count+offset:offset]
+        else:
+            return self.candles[-count:]
 
     def pop_extra_candles(self):
         while(self.max_candles and len(self.candles) > self.max_candles):
@@ -308,8 +311,8 @@ class Candles:
         }
         return candles
             
-    def nd_last_candles(self, count=1):
-        candles = self.get_last_candles(count=count)
+    def nd_last_candles(self, count=1, offset=0):
+        candles = self.get_last_candles(count=count, offset=offset)
         candles = {
             'open': np.array([candle['open'] for candle in candles]),
             'close': np.array([candle['close'] for candle in candles]),

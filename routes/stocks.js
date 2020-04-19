@@ -22,7 +22,7 @@ router.get('/:pathParam', function (req, res, next) {
         Entry.find({}).populate('stock').exec(function (err, d) {
             if (err) throw new Error(err)
             for (var a of d) {
-                stocks[a['stock']['name']] = a['stock']['token']
+                stocks[a['stock']['name']] = a['stock']['token'] //populating with the stocks to be subsribed for live data feed
             }
             s = []
             for (var name in stocks) {

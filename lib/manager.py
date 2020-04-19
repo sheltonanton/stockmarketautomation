@@ -31,7 +31,9 @@ class TradeManager(Observer):
 
     def initialize(self):
         self.strategies = defaultdict(list)
-        self.counters = defaultdict(list)
+        self.counters = defaultdict(list) #will contain the trader for a particular strategy for a particular stock
+        #trader should get the signal from strategy, check the stocks to be traded for that strategy
+        #generate trades on that strategy, organised by stock names and in future, the account in which to trade
         self.flag = True
 
     def load_trades(self, trades):
@@ -56,8 +58,9 @@ class TradeManager(Observer):
                 data = self.input.get_nowait()
                 if(data):
                     logger.info("Popped from queue: {} - {} {}".format(lt(data['data']['time']), data['name'], json.dumps(data)))
-                    self.close_counter_trades(strategy=data)
+                    self.close_counter_trades(strategy=data) #this could only generate signal based on dynamic data and not static data
                     for trade in self.strategies[data['_id']+"_"+data['token']]:
+                            #entry status is on
                             if(data.get('status') == 'on'):
                                 self.close_trades(stock=data['token'], order_type=('sell' if data['type'] == 'buy' else 'sell'))
                                 price = trade['price']
@@ -90,10 +93,16 @@ class TradeManager(Observer):
                                         'trader': trade['trader'],
                                         'args': [r['variety'], r['order_id']]
                                     })
+        #when the queue becomes empty, error is thrown and it comes out of the loop
+        #process flows in this way
+        #strategy generates the signal and push it into pipe
+        #trade update is called
+        #trades are taken and when queue becomes empty, error thrown and the normal price update takes place
         except queue.Empty:
             pass
-
+        
         data = dataFeed.data
+        #updating the 
         for key in self.strategies:
             for strategy in self.strategies[key]:
                 trader = strategy['trader']
@@ -141,7 +150,7 @@ class TradeManager(Observer):
                     trade['trader'].close_all_trades(order_type)
 
     def close_counter_trades(self, strategy = None, trade = None):
-        counters = self.counters[strategy['_id']+"_"+strategy['token']]
+        counters = self.counters[strategy['_id']+"_"+strategy['token']] #hash with strategy id and stock token
         for counter in counters:
             status = counter['trader'].close_counter_trades([*counter['args'], strategy.get('data')])
             if status:

@@ -59,45 +59,11 @@ def get_instruments(data, result):
         'status': 'success',
         'data': output
     }
-
-class Buffer:
-    def __init__(self, default=list):
-        self.default = list
-        self.buffer = None
-        self.stream = None
-        self.__initialize()
-
-    def __initialize(self):
-        self.stream = self.buffer
-        if(self.default):
-            self.buffer = defaultdict(list)
-        else:
-            self.buffer = {}
-
-    def store(self, key, value):
-        if(key):
-            self.buffer[key] = value
-            return True
-        return False
-
-    def get(self, key):
-        return self.buffer.get(key)
-
-    def start_stream(self):
-        self.__initialize()
-
-    def finish_stream(self):
-        self.stream = None
-        self.stream_finished = True
-
-    def is_stream_finished(self):
-        return (self.stream_finished is not None)
         
 def start_ws_stream(data={}, result={}, load_past = True):
     global storage
     (chi, par) = Pipe(True)
     pipe = WebSocketPipe(process_args, par, chi)
-    # buffer = Buffer()
     storage['ws_pipe'] = pipe
     thread = Thread(target=web_socket, args=(pipe, None))
     thread.start()
@@ -112,12 +78,6 @@ def start_ws_stream(data={}, result={}, load_past = True):
     else:
         r = requests.get(urls['stocks'])
         stocks = json.loads(r.content)['stocks']
-        #in the format
-        #{name: SYMBOL, token: TOKEN}
-
-    # dm = DateManager()
-    # current_time = dm.time(string_format="%Y-%m-%d")
-    # past_time = dm.time(days=-2, string_format="%Y-%m-%d")
 
     for stock in stocks:
         if stock:
@@ -140,30 +100,6 @@ def start_ws_stream(data={}, result={}, load_past = True):
     storage['tokens_to_symbols'] = t_t_s
 
     pipe.write(json.dumps(pipe_data))  # subscribed to the tokens in websocket
-    #start the websocket streaming in nodejs process
-    # for stock in stocks:  # load the historical data into the buffer
-    #     if stock:
-    #         try:
-    #             logger.info("Downloading historical data: {}".format(stock))
-    #             history_data = history.get_raw_data(
-    #                 stock['token'], 1, past_time, current_time)
-    #             live_data = buffer.get(int(stock['token'])) or []
-    #             last_history_data_time = int(datetime.strptime(history_data[-1][0], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
-
-    #             logger.info("Last History record: {}".format(history_data[-1]))
-    #             while(True):
-    #                 if(live_data):
-    #                     ld = int(live_data[0].get('time') or live_data[0].get('t'))
-    #                     if(ld < last_history_data_time + 60):
-    #                         live_data.pop(0)
-    #                 else:
-    #                     break
-    #             logger.info("Live data from buffer: {}".format(live_data))
-    #             history_data.extend(live_data)
-    #             buffer.store(int(stock['token']), history_data)
-    #         except Exception as e:
-    #             logger.exception(e)
-    # buffer.start_stream()
     print("Websocket streaming started")
 
 def start_automation(data={}, result={}):
@@ -200,14 +136,18 @@ def simulate_automation(data, result):
         ssm = StrategyManager(outputPipe=q2)
         stm = TradeManager(inputPipe=q2, simulation=True)
         #start the datafeed dummy transaction
-        # start_orb(None, simulation=True)
+
         ssm.load_strategies(strategies=data.get('strategies'))
         trades = {}
+        
         for s in data.get('strategies'):
-            trades[s['_id']] = s['trades']
-        dataFeed.attach(ssm, simulation=True)
+            if(s.get('trades')):
+                trades[s['_id']+"_"+s['token']] = s['trades']
         stm.load_trades(trades=trades)
-        # stm.start()
+        
+        dataFeed.attach(ssm, simulation=False)
+        dataFeed.attach(stm, simulation=False)
+
         dataFeed.simulate(
             start_time=datestring, 
             end_time=datestring,
@@ -253,12 +193,6 @@ def run_backtest(data, result):
     simulation_callback()
     logger.info("End of backtest")
     logger.info("Generating Report")
-    # figures = ssm.get_chart()
-    # for stock in figures:
-    #     f1 = figures[stock]
-    #     for strategy in f1:
-    #         figure = f1[strategy]
-    #         figure.savefig('output/figures/{}_{}.png'.format(stock, strategy))
 
     report = stm.get_report()
     reportLogger.info("\n" + json.dumps(report))
@@ -324,44 +258,14 @@ handlers = {
 }
 
 #------------------------------------------------- ALL UTILITY, STREAM READ AND STREAM WRITE FUNCTIONS ----------------------------------------------------
-def read_from_node():
-    line = input()
-    return json.loads(line)
 
 def write_to_node(data):
     requests.post('http://localhost:3000/auto/process', data=data)
-    
-def read_from_socket(pipe):
-    message = pipe.recv()
-    return message
-
-def write_to_socket(pipe, data):
-    pipe.send(data)
 
 def web_socket(pipe, buffer=None):
     global dataFeed
      #record the live data for the process
     while(True):
-        # try:
-        # if buffer and buffer.stream:
-        #     for token in buffer.stream:
-        #     # list of data along with historical and currently stored ticks
-        #         ticks = buffer.stream[token]
-        #         for tick in ticks:
-        #             a = {}
-        #             a['time'], a['open'], a['high'], a['low'], a['close'], a['volume'] = tick
-        #             a['sm'] = False
-        #             a['isCandle'] = True
-        #             a['time'] = int(datetime.strptime(
-        #                 a['time'], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
-        #             a['interval'] = 60  # in seconds
-        #             a['token'] = token
-        #             a['noTrade'] = True
-        #             dataFeed.notify(a)
-        #         logger.info("PAST DATA LOADED")
-        #     buffer.finish_stream()
-
-        #reading from zerodha_ticks, whether live data or historical data
         data = pipe.read().decode('utf-8')
         feedLogger.debug(data)
         data = json.loads(data)
@@ -369,13 +273,8 @@ def web_socket(pipe, buffer=None):
         if(data['status'] == 'success'):
             if(type(data['data']) is list): #list for price data feed
                 for d in data['data']:
-                    # if buffer.is_stream_finished():
                     d['symbol'] = storage['tokens_to_symbols'][int(d['token'])]
                     dataFeed.notify(d)
-                    # requests.post(urls['send_feed'], json=d)
-                    # else:
-                    #     stock = buffer.setdefault(int(d['token']), [])
-                    #     stock.append(d)
 
             if(type(data['data']) is dict): #dict for json object - such as feedback from websockets in case of zerodha, or any other meta data
                 tm.update(data['data'])
@@ -432,3 +331,38 @@ def main(handlers):
     app.run(debug=False)
     
 main(handlers)
+
+'''
+class Buffer:
+    def __init__(self, default=list):
+        self.default = list
+        self.buffer = None
+        self.stream = None
+        self.__initialize()
+
+    def __initialize(self):
+        self.stream = self.buffer
+        if(self.default):
+            self.buffer = defaultdict(list)
+        else:
+            self.buffer = {}
+
+    def store(self, key, value):
+        if(key):
+            self.buffer[key] = value
+            return True
+        return False
+
+    def get(self, key):
+        return self.buffer.get(key)
+
+    def start_stream(self):
+        self.__initialize()
+
+    def finish_stream(self):
+        self.stream = None
+        self.stream_finished = True
+
+    def is_stream_finished(self):
+        return (self.stream_finished is not None)
+'''

@@ -5,15 +5,15 @@ html
     link(rel='stylesheet', href='/stylesheets/style.css')
     link(rel='stylesheet', href='https://cdn.datatables.net/v/dt/dt-1.10.20/datatables.min.css')
     link(rel='stylesheet', href='/ember/ember.css')
-    meta(name="client/config/environment" content="%7B%22modulePrefix%22%3A%22client%22%2C%22environment%22%3A%22development%22%2C%22rootURL%22%3A%22%2F%22%2C%22locationType%22%3A%22hash%22%2C%22EmberENV%22%3A%7B%22FEATURES%22%3A%7B%7D%2C%22EXTEND_PROTOTYPES%22%3A%7B%22Date%22%3Afalse%7D%2C%22_JQUERY_INTEGRATION%22%3Afalse%7D%2C%22APP%22%3A%7B%22LOG_TRANSITIONS%22%3Atrue%2C%22name%22%3A%22client%22%2C%22version%22%3A%220.0.0%2Bac4f3d60%22%7D%2C%22exportApplicationGlobal%22%3Atrue%2C%22isModuleUnification%22%3Afalse%7D")
+    meta(name="client/config/environment" content="%7B%22modulePrefix%22%3A%22client%22%2C%22environment%22%3A%22development%22%2C%22rootURL%22%3A%22%2F%22%2C%22locationType%22%3A%22hash%22%2C%22EmberENV%22%3A%7B%22FEATURES%22%3A%7B%7D%2C%22EXTEND_PROTOTYPES%22%3A%7B%22Date%22%3Afalse%7D%2C%22_JQUERY_INTEGRATION%22%3Afalse%7D%2C%22APP%22%3A%7B%22LOG_TRANSITIONS%22%3Atrue%2C%22rootElement%22%3A%22%23ember-app%22%2C%22name%22%3A%22client%22%2C%22version%22%3A%220.0.0%2B6a4a5364%22%7D%2C%22exportApplicationGlobal%22%3Atrue%2C%22isModuleUnification%22%3Afalse%7D")
 
   body
     block content
     script(type="text/javascript" crossorigin="anonymous" src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=")
     script(type="text/javascript" crossorigin="anonymous" src="https://cdn.datatables.net/v/dt/dt-1.10.20/datatables.min.js")
     //- script(type="text/javascript" src="https://kite.trade/publisher.js?v=3")
-    script(type="text/javascript" src="/ember/vendor.js" async=true defer=true)
-    script(type="text/javascript" src="/ember/client.js" async=true defer=true)
+    script(type="text/javascript" src="/ember/vendor.js" async=false defer=true)
+    script(type="text/javascript" src="/ember/client.js" async=false defer=true)
     script(type='text/javascript')
       block scripts
         |

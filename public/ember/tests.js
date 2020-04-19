@@ -490,11 +490,11 @@ define("client/tests/lint/app.lint-test", [], function () {
   });
   QUnit.test('components/trade-component.js', function (assert) {
     assert.expect(1);
-    assert.ok(true, 'components/trade-component.js should pass ESLint\n\n');
+    assert.ok(false, 'components/trade-component.js should pass ESLint\n\n68:11 - Use `import { set } from \'@ember/object\';` instead of using Ember.set (ember/new-module-imports)\n68:11 - \'Ember\' is not defined. (no-undef)\n72:9 - Unexpected console statement. (no-console)\n78:11 - Use `import { set } from \'@ember/object\';` instead of using Ember.set (ember/new-module-imports)\n78:11 - \'Ember\' is not defined. (no-undef)\n81:11 - Use `import { set } from \'@ember/object\';` instead of using Ember.set (ember/new-module-imports)\n81:11 - \'Ember\' is not defined. (no-undef)\n84:11 - Use `import { set } from \'@ember/object\';` instead of using Ember.set (ember/new-module-imports)\n84:11 - \'Ember\' is not defined. (no-undef)');
   });
   QUnit.test('components/trade-wrapper.js', function (assert) {
     assert.expect(1);
-    assert.ok(false, 'components/trade-wrapper.js should pass ESLint\n\n39:9 - Unexpected console statement. (no-console)');
+    assert.ok(true, 'components/trade-wrapper.js should pass ESLint\n\n');
   });
   QUnit.test('models/entry.js', function (assert) {
     assert.expect(1);
@@ -536,6 +536,10 @@ define("client/tests/lint/app.lint-test", [], function () {
     assert.expect(1);
     assert.ok(true, 'routes/dashboard.js should pass ESLint\n\n');
   });
+  QUnit.test('routes/dashboard/backtest.js', function (assert) {
+    assert.expect(1);
+    assert.ok(true, 'routes/dashboard/backtest.js should pass ESLint\n\n');
+  });
   QUnit.test('routes/dashboard/entry.js', function (assert) {
     assert.expect(1);
     assert.ok(true, 'routes/dashboard/entry.js should pass ESLint\n\n');
@@ -562,7 +566,7 @@ define("client/tests/lint/app.lint-test", [], function () {
   });
   QUnit.test('serializers/trade.js', function (assert) {
     assert.expect(1);
-    assert.ok(false, 'serializers/trade.js should pass ESLint\n\n36:38 - \'pbject\' is not defined. (no-undef)');
+    assert.ok(false, 'serializers/trade.js should pass ESLint\n\n22:7 - Unexpected console statement. (no-console)\n48:38 - \'pbject\' is not defined. (no-undef)');
   });
 });
 define("client/tests/lint/templates.template.lint-test", [], function () {
@@ -615,7 +619,7 @@ define("client/tests/lint/templates.template.lint-test", [], function () {
   });
   QUnit.test('client/templates/components/trade-component.hbs', function (assert) {
     assert.expect(1);
-    assert.ok(false, 'client/templates/components/trade-component.hbs should pass TemplateLint.\n\nclient/templates/components/trade-component.hbs\n  2:4  error  Incorrect indentation for `<div>` beginning at L2:C4. Expected `<div>` to be at an indentation of 2 but was found at 4.  block-indentation\n  3:4  error  Incorrect indentation for `{{input}}` beginning at L3:C4. Expected `{{input}}` to be at an indentation of 2 but was found at 4.  block-indentation\n  6:4  error  Incorrect indentation for `<div>` beginning at L6:C4. Expected `<div>` to be at an indentation of 2 but was found at 4.  block-indentation\n  7:4  error  Incorrect indentation for `{{#if}}` beginning at L7:C4. Expected `{{#if}}` to be at an indentation of 2 but was found at 4.  block-indentation\n  8:8  error  Incorrect indentation for `{{operand}}` beginning at L8:C8. Expected `{{operand}}` to be at an indentation of 6 but was found at 8.  block-indentation\n  1:11  error  you must use double quotes in templates  quotes\n  3:17  error  you must use double quotes in templates  quotes\n  5:11  error  you must use double quotes in templates  quotes\n');
+    assert.ok(false, 'client/templates/components/trade-component.hbs should pass TemplateLint.\n\nclient/templates/components/trade-component.hbs\n  2:4  error  Incorrect indentation for `<div>` beginning at L2:C4. Expected `<div>` to be at an indentation of 2 but was found at 4.  block-indentation\n  3:4  error  Incorrect indentation for `{{input}}` beginning at L3:C4. Expected `{{input}}` to be at an indentation of 2 but was found at 4.  block-indentation\n  6:4  error  Incorrect indentation for `<div>` beginning at L6:C4. Expected `<div>` to be at an indentation of 2 but was found at 4.  block-indentation\n  7:4  error  Incorrect indentation for `{{#if}}` beginning at L7:C4. Expected `{{#if}}` to be at an indentation of 2 but was found at 4.  block-indentation\n  12:4  error  Incorrect indentation for `<button>` beginning at L12:C4. Expected `<button>` to be at an indentation of 2 but was found at 4.  block-indentation\n  8:8  error  Incorrect indentation for `{{component}}` beginning at L8:C8. Expected `{{component}}` to be at an indentation of 6 but was found at 8.  block-indentation\n  10:8  error  Incorrect indentation for `{{input}}` beginning at L10:C8. Expected `{{input}}` to be at an indentation of 6 but was found at 8.  block-indentation\n  15:4  error  Incorrect indentation for `<div>` beginning at L15:C4. Expected `<div>` to be at an indentation of 2 but was found at 4.  block-indentation\n  16:4  error  Incorrect indentation for `{{#if}}` beginning at L16:C4. Expected `{{#if}}` to be at an indentation of 2 but was found at 4.  block-indentation\n  21:4  error  Incorrect indentation for `<button>` beginning at L21:C4. Expected `<button>` to be at an indentation of 2 but was found at 4.  block-indentation\n  17:8  error  Incorrect indentation for `{{component}}` beginning at L17:C8. Expected `{{component}}` to be at an indentation of 6 but was found at 8.  block-indentation\n  19:8  error  Incorrect indentation for `{{input}}` beginning at L19:C8. Expected `{{input}}` to be at an indentation of 6 but was found at 8.  block-indentation\n  24:4  error  Incorrect indentation for `<div>` beginning at L24:C4. Expected `<div>` to be at an indentation of 2 but was found at 4.  block-indentation\n  25:4  error  Incorrect indentation for `{{#if}}` beginning at L25:C4. Expected `{{#if}}` to be at an indentation of 2 but was found at 4.  block-indentation\n  30:4  error  Incorrect indentation for `<button>` beginning at L30:C4. Expected `<button>` to be at an indentation of 2 but was found at 4.  block-indentation\n  26:8  error  Incorrect indentation for `{{component}}` beginning at L26:C8. Expected `{{component}}` to be at an indentation of 6 but was found at 8.  block-indentation\n  28:8  error  Incorrect indentation for `{{input}}` beginning at L28:C8. Expected `{{input}}` to be at an indentation of 6 but was found at 8.  block-indentation\n  1:11  error  you must use double quotes in templates  quotes\n  3:17  error  you must use double quotes in templates  quotes\n  5:11  error  you must use double quotes in templates  quotes\n  8:59  error  you must use double quotes in templates  quotes\n  8:65  error  you must use double quotes in templates  quotes\n  10:21  error  you must use double quotes in templates  quotes\n  12:21  error  you must use double quotes in templates  quotes\n  12:35  error  you must use double quotes in templates  quotes\n  14:11  error  you must use double quotes in templates  quotes\n  17:61  error  you must use double quotes in templates  quotes\n  17:67  error  you must use double quotes in templates  quotes\n  19:21  error  you must use double quotes in templates  quotes\n  21:21  error  you must use double quotes in templates  quotes\n  21:35  error  you must use double quotes in templates  quotes\n  23:11  error  you must use double quotes in templates  quotes\n  26:65  error  you must use double quotes in templates  quotes\n  26:71  error  you must use double quotes in templates  quotes\n  28:21  error  you must use double quotes in templates  quotes\n  30:21  error  you must use double quotes in templates  quotes\n  30:35  error  you must use double quotes in templates  quotes\n');
   });
   QUnit.test('client/templates/components/trade-wrapper.hbs', function (assert) {
     assert.expect(1);
@@ -624,6 +628,10 @@ define("client/tests/lint/templates.template.lint-test", [], function () {
   QUnit.test('client/templates/dashboard.hbs', function (assert) {
     assert.expect(1);
     assert.ok(false, 'client/templates/dashboard.hbs should pass TemplateLint.\n\nclient/templates/dashboard.hbs\n  2:4  error  Incorrect indentation for `{{outlet}}` beginning at L2:C4. Expected `{{outlet}}` to be at an indentation of 2 but was found at 4.  block-indentation\n');
+  });
+  QUnit.test('client/templates/dashboard/backtest.hbs', function (assert) {
+    assert.expect(1);
+    assert.ok(true, 'client/templates/dashboard/backtest.hbs should pass TemplateLint.\n\n');
   });
   QUnit.test('client/templates/dashboard/entry.hbs', function (assert) {
     assert.expect(1);
@@ -729,6 +737,10 @@ define("client/tests/lint/tests.lint-test", [], function () {
   QUnit.test('unit/routes/application-test.js', function (assert) {
     assert.expect(1);
     assert.ok(true, 'unit/routes/application-test.js should pass ESLint\n\n');
+  });
+  QUnit.test('unit/routes/dashboard/backtest-test.js', function (assert) {
+    assert.expect(1);
+    assert.ok(true, 'unit/routes/dashboard/backtest-test.js should pass ESLint\n\n');
   });
   QUnit.test('unit/routes/index-test.js', function (assert) {
     assert.expect(1);
@@ -866,6 +878,17 @@ define("client/tests/unit/routes/application-test", ["qunit", "ember-qunit"], fu
     (0, _emberQunit.setupTest)(hooks);
     (0, _qunit.test)('it exists', function (assert) {
       let route = this.owner.lookup('route:application');
+      assert.ok(route);
+    });
+  });
+});
+define("client/tests/unit/routes/dashboard/backtest-test", ["qunit", "ember-qunit"], function (_qunit, _emberQunit) {
+  "use strict";
+
+  (0, _qunit.module)('Unit | Route | dashboard/backtest', function (hooks) {
+    (0, _emberQunit.setupTest)(hooks);
+    (0, _qunit.test)('it exists', function (assert) {
+      let route = this.owner.lookup('route:dashboard/backtest');
       assert.ok(route);
     });
   });

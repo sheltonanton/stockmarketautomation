@@ -68,7 +68,7 @@ router.post('/send_feed', function(req, res, next){
 });
 
 /* RUN AUTOMATION AS SIMULATION */
-router.get('/simulate', async function(req, res, next){
+router.post('/simulate', async function(req, res, next){
     let dates = req.body.data
     var s = [], t = [], stocks = {};
     entries = await Entry.find({}).populate('strategy').populate('counter').populate('trade').populate('stock')
@@ -100,7 +100,8 @@ router.get('/simulate', async function(req, res, next){
     data = {
         strategies: s,
         stocks,
-        dates
+        dates,
+        auth: express.zt.getAuth()
     }
     pyscript && pyscript.process_data('simulate_automation', data, (result, err) => {
         if (result) {
@@ -122,7 +123,7 @@ router.post('/backtest', async function(req, res, next){
     }
      var s = [],
          t = [];
-     //get all entries
+     // all entries
      entries = await Entry.find({}).populate('strategy').populate('counter').populate('trade').populate('stock')
      //get the strategies associated with the entries
      //TODO CLEANUP change this method of data provider and come up with a clean way

@@ -10,7 +10,7 @@ mixin automation(data)
                 button.automation-button(disabled=automation_flag, onclick="auto_backtest('automation-input')") BackTest
                 button.automation-button(disabled=automation_flag, onclick='auto_stop_process()') Stop Process
                 button.automation-button(disabled=automation_flag, onclick='auto_force_stop()') Force Stop
-        .flex-column
+        .flex-column(style={width: '100%'})
             .automation-display(id="automation-display" style={'height':'196px'})
             input.automation-input(type="text" id="automation-input" style={'height':'27px'})
 

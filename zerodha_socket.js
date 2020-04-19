@@ -85,3 +85,13 @@ const SUBSCRIPTION = "subscription";
         })
     }
 }())
+
+//apis
+/*
+    live data feed ( should be streamed )
+    getting historical data ( what is the best way? )
+    subscribing to stocks ( this should be a consuming action )
+    closing the web socket ( what is the best way? )
+    initializing the web socket ( what is the best way? )
+    removing subscription ** ( this should be a consuming action )
+*/

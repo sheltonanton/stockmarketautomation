@@ -214,3 +214,7 @@ catch(ex){console.log(ex);}
 module.exports = {
   Zerodha
 }
+
+//getStatus - finding the connection status for every HEARTBEAT time
+//reconnect - reconnect if not connected, do that while placing the order and for every HEARTBEAT time
+//

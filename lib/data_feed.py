@@ -75,13 +75,13 @@ class DataFeed(Subject):
             while(True):
                 try:
                     row = next(f).strip().split(', ')
-                    data = {'sm': True}
+                    data = {'sm': False}
                     for x in range(len(row)):
                         data[headers[x]] = row[x]
                     if(real_time):
                         now = int(data['time'])
                         if prev:
-                            time.sleep(now - prev)
+                            time.sleep(now - prev) #WARNING - prev is unassigned
                         prev = now
                     self.notify(data)
                     #need to combine even next day for combining the flow
@@ -93,7 +93,7 @@ class DataFeed(Subject):
                         cur_date = cur_date + timedelta(days=1)
                         print("Starting Simulation: {}".format(cur_date.strftime(date_format)))
                         f = open("{}\\{}.csv".format(self.filepath, cur_date.strftime(date_format)))
-                        next(f)
+                        next(f) #to skip the header in the next file, calling this
         if callback:
             callback()
 
@@ -106,7 +106,7 @@ class DataFeed(Subject):
                     d = data['candles'][token].pop(0)
                     a = {}
                     a['time'], a['open'], a['high'], a['low'], a['close'], a['volume'] = d
-                    a['sm'] = True
+                    a['sm'] = False
                     a['isCandle'] = True
                     a['time'] = int(datetime.strptime(a['time'],'%Y-%m-%dT%H:%M:%S+0530').timestamp())
                     a['interval'] = (data['interval'] * 60) #in seconds

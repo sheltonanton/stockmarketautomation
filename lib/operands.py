@@ -11,6 +11,7 @@ import datetime as dt
 from talib import MACD, EMA, SMA, BBANDS, STOCHRSI
 import pdb
 import logging
+import math
 
 #this class sould be used for just simple numbers
 #should be ovverridden if indicators and some extra functionality to be used
@@ -202,16 +203,17 @@ def create_operation(string=None, data=None):
 
 #available data(price, time, token, open, high, low, close, isCandle) close=price, for trades data(type, lastPrice)
 #overridden 
+#constant value
 class Value(Operand):
     '''[args] (value)'''
     def __init__(self, args=[]):
         Operand.__init__(self)
-        self.setd(int(args[0]))
+        self.setd(float(args[0]))
 
     def update(self, d):
         Operand.update(self, d)
         return self
-
+#for now, it should be given as a epoch time, change it to datatime string, for processing time
 class Time(Operand):
     '''[args] (time)'''
     def __init__(self, args=[]):
@@ -222,6 +224,7 @@ class Time(Operand):
         self.setd(self.time)
         return self
 
+#there are many fields within the supplied data object, performing operation on such requires this
 class Data(Operand):
     '''[args] (key for data)'''
     def __init__(self, args=[]):
@@ -235,6 +238,7 @@ class Data(Operand):
         self.setd(value)
         return self
 
+#noise factor specification, name should be changed to somewhat meaningful
 class Price(Operand):
     '''[args] (noise_factor)'''
     def __init__(self, args=[]):
@@ -246,6 +250,18 @@ class Price(Operand):
         v = (float(d['lastPrice']) - float(self.noise_factor)) if (t == 'sell') else (float(d['lastPrice']) + float(self.noise_factor))
         v = round(v, 2)
         self.setd(v)
+        return self
+
+#percent calculation
+class Percent(Operand):
+    '''[args] (number)'''
+    def __init__(self, args=[]):
+        Operand.__init__(self)
+        self.percent = float(args[0])
+
+    def update(self, d):
+        price = float(d['lastPrice'])
+        self.setd(round(math.floor((price * (self.percent / 100))/0.05) * 0.05, 2))
         return self
 
 class Candle(Operand):
@@ -363,6 +379,41 @@ class HistorisedCandle(Candle):
 #extending candle will give candle functionality
 #should change current and previous value, so that indication occurs
 
+
+class Max(HistorisedCandle):
+    ''' Gives the maximum y of the x candles '''
+
+    def __init__(self, args=[]):
+        HistorisedCandle.__init__(self, [args[0] or 1, args[1] or 'close', len(args) > 2 and args[2] or 0])
+        self.period = int(args[0]) or 20
+        self.dickKey = str(args[1]) or 'close'
+
+    def update(self, data):
+        HistorisedCandle.update(self, data)
+        if(self.is_new_candle_formed()):  # perform this only when new candle is formed
+            candles = self.candles.nd_last_candles(count=self.period, offset=self.prev+1)
+            #find the max [dictkey] of data or [period] candles
+            self.p = self.d
+            self.d = max(candles[self.dictKey] if len(candles[self.dictKey]) else [0])
+        return self
+
+class Min(HistorisedCandle):
+    '''Gives the minimum y or the x candles '''
+    
+    def __init__(self, args=[]):
+        HistorisedCandle.__init__(self, [args[0] or 1, args[1] or 'close', len(args) > 2 and args[2] or 0])
+        self.period = int(args[0]) or 20
+        self.dictKey = str(args[1]) or 'close'
+
+    def update(self, data):
+        HistorisedCandle.update(self, data)
+        if(self.is_new_candle_formed()):
+            candles = self.candles.nd_last_candles(count=self.period, offset=self.prev+1)
+            #find the min [dictKey] of data or [period] candles
+            self.p = self.d
+            self.d = min(candles[self.dictKey] if len(candles[self.dictKey]) else [0])
+        return self
+
 class MovingAverageConvergenceDivergence(HistorisedCandle):
     '''[args] (fastperiod, slowperiod, signalperiod, output) '''
 
@@ -375,7 +426,7 @@ class MovingAverageConvergenceDivergence(HistorisedCandle):
         self.output = args[4] or 'macd'
         self.keys = {'macd': 0, 'signal': 1, 'hist': 2}
         self.k = self.keys.get(self.output) or 0
-        self.has_loaded = False
+        # self.has_loaded = False
 
     def update(self, data):
         d = self.d

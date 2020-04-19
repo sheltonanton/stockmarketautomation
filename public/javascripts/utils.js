@@ -1,3 +1,4 @@
+window.location.href = "/#/dashboard/entry";
 function parse_form(form){
     var result = {}
     Array.from(form.elements).forEach(element => {

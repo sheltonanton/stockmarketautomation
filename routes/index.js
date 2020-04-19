@@ -4,7 +4,7 @@ var router = express.Router();
 const Stock = require('../models/stock')
 const Property = require('../models/property')
 const User = require('../models/user')
-const Entry = require('../models/entry')
+// const Entry = require('../models/entry')
 
 const login = require('../views/data/forms/login')
 const addUser = require('../views/data/forms/addUser')
@@ -22,25 +22,25 @@ router.get('/backtest', function(req, res, next){
   res.render('backtest', {})
 });
 
-router.get('/entries_insert', function(req, res, next){
-  model = req.body;
-  stocks = model.stocks;
-    Entry.find({}, function(err, d){
-      for (var stock of stocks) {
-        for(var a of d){
-          Entry.create(data).then((r, err) => {
-            express.ws_write('SAVED ENTRY: ' + r._id)
-            if (!err) {
-              res.send({
-                entry: r
-              })
-            }
-          })
-        }
-      }
-    })
-  }
-)
+// router.get('/entries_insert', function(req, res, next){
+//   model = req.body;
+//   stocks = model.stocks;
+//     Entry.find({}, function(err, d){
+//       for (var stock of stocks) {
+//         for(var a of d){
+//           Entry.create(data).then((r, err) => {
+//             express.ws_write('SAVED ENTRY: ' + r._id)
+//             if (!err) {
+//               res.send({
+//                 entry: r
+//               })
+//             }
+//           })
+//         }
+//       }
+//     })
+//   }
+// )
 
 router.get('/properties/:property', function(req, res, next){
   params = req.params;

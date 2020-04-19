@@ -20,7 +20,9 @@ operands = {
     'ema': 'ExponentialMovingAverage',
     'bband': 'BollingerBands',
     'stochrsi': 'StochasticRelativeStrengthIndex',
-    'max': 'Maximum'
+    'max': 'Max',
+    'min': 'Min',
+    'percent': 'Percent'
 }
 
 traders = {

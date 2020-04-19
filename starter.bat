@@ -1,2 +1,2 @@
-start python zerodha_orders.py
-node --inspect ./bin/www
+pm2 start zerodha_orders.py
+pm2 start ./bin/www
