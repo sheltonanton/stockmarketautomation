@@ -57,42 +57,56 @@ class TradeManager(Observer):
             while(True):
                 data = self.input.get_nowait()
                 if(data):
-                    logger.info("Popped from queue: {} - {} {}".format(lt(data['data']['time']), data['name'], json.dumps(data)))
-                    self.close_counter_trades(strategy=data) #this could only generate signal based on dynamic data and not static data
+                    # logger.info("Popped from queue: {} - {} {}".format(lt(data['data']['time']), data['name'], json.dumps(data)))
+                    #self.close_counter_trades(strategy=data) #this could only generate signal based on dynamic data and not static data
                     for trade in self.strategies[data['_id']+"_"+data['token']]:
                             #entry status is on
-                            if(data.get('status') == 'on'):
-                                self.close_trades(stock=data['token'], order_type=('sell' if data['type'] == 'buy' else 'sell'))
-                                price = trade['price']
-                                target = trade['target']
-                                stoploss = trade['stoploss']
-                                quantity = trade['quantity']
-                                s = d = None
-                                s = data['stock']
-                                d = {**data, **data['data']}
-                                price = (price, price.update(d).d)[
-                                    type(price) is Operation or type(price) is Operand]
-                                target = (target, target.update(d).d)[
-                                    type(target) is Operation or type(target) is Operand]
-                                stoploss = (stoploss, stoploss.update(d).d)[
-                                    type(stoploss) is Operation or type(stoploss) is Operand]
-                                quantity = (quantity, quantity.update(d).d)[
-                                    type(quantity) is Operation or type(quantity) is Operand]
-                                if(quantity == 0):
-                                        quantity = 1
-                                r = None
-                                if(target == 0):
-                                    #TODO generalize counter
-                                    r = trade['trader'].trade(stock=s, otype=data.get(
-                                        'type') or 'buy', price=price, stoploss=stoploss, quantity=quantity, params=d)
-                                else:
-                                    r = trade['trader'].trade(s, data.get(
-                                        'type') or 'buy', price, target, stoploss, quantity, params=d)
-                                if r:
-                                    self.counters[data['counter']+"_"+data['token']].append({
-                                        'trader': trade['trader'],
-                                        'args': [r['variety'], r['order_id']]
-                                    })
+                            try:
+                                if(data.get('status') == 'on'):
+                                    #self.close_trades(stock=data['token'], order_type=('sell' if data['type'] == 'buy' else 'sell'))
+                                    price = trade['price']
+                                    target = trade['target']
+                                    stoploss = trade['stoploss']
+                                    quantity = trade['quantity']
+                                    s = d = None
+                                    s = data['stock']
+                                    d = {**data, **data['data']}
+                                    price = (price, price.update(d).d)[
+                                        type(price) is Operation or type(price) is Operand]
+                                    target = (target, target.update(d).d)[
+                                        type(target) is Operation or type(target) is Operand]
+                                    stoploss = (stoploss, stoploss.update(d).d)[
+                                        type(stoploss) is Operation or type(stoploss) is Operand]
+                                    quantity = (quantity, quantity.update(d).d)[
+                                        type(quantity) is Operation or type(quantity) is Operand]
+                                    if(quantity == 0):
+                                            quantity = 1
+
+                                    target = self.round_off(target)
+                                    stoploss = self.round_off(stoploss)
+                                    price = self.round_off(price)
+                                    quantity = int(quantity)
+                                    r = None
+                                    logger.info("Trade parameter: {}".format(data['name']))
+                                    logger.info("Price: {}, target: {}, stoploss: {}, quantity: {}".format(price, target, stoploss, quantity))
+                                    # logger.info(trade['stoploss'])
+                                    # logger.info(trade['target'])
+                                    if(target == 0):
+                                        #TODO generalize counter
+                                        r = trade['trader'].trade(stock=s, otype=data.get(
+                                            'type') or 'buy', price=price, stoploss=stoploss, quantity=quantity, params=d)
+                                    else:
+                                        r = trade['trader'].trade(s, data.get('type') or 'buy', price, target, stoploss, quantity, params=d)
+                                    if r:
+                                        self.counters[data['counter']+"_"+data['token']].append({
+                                            'trader': trade['trader'],
+                                            'args': [r['variety'], r['order_id']]
+                                        })
+                            except Exception as e:
+                                logger.error("In trade manager:")
+                                logger.error(e)
+                                logger.error(trade.get('price'))
+                                logger.exception(e)
         #when the queue becomes empty, error is thrown and it comes out of the loop
         #process flows in this way
         #strategy generates the signal and push it into pipe
@@ -107,6 +121,16 @@ class TradeManager(Observer):
             for strategy in self.strategies[key]:
                 trader = strategy['trader']
                 trader.update(data)
+        
+        for name in self.strategies:
+            for trade in self.strategies[name]:
+                if(int(name.split('_')[1]) == int(data['token'])):
+                    for key in trade:
+                        if(type(trade[key]) is Operation or type(trade[key]) is Operand):
+                            trade[key].update(data)
+
+    def round_off(self, v):
+        return round((v/0.05) * 0.05, 2)
 
     def create_trade(self, trade=None):
         price = self.get_operation(trade.get('price'))

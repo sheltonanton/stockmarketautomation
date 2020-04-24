@@ -7,7 +7,9 @@ import time
 from threading import Thread
 from datetime import datetime, timedelta
 import datetime as dt
+import logging
 
+logger = logging.getLogger('flowLogger')
 
 class History:
     """
@@ -27,13 +29,13 @@ class History:
         return instrument_token
     
     def get_data(self, instrument_token, time_type, from_time, to_time):
-        data = self.get_raw_data(instrument_token, time_type, from_time, to_time)
+        data = self.get_raw_data(instrument_token, time_type, from_time, to_time, "")
         return pd.DataFrame(data, columns=['t','o','h','l','c','v'])
 
-    def get_raw_data(self, instrument_token, time_type, from_time, to_time):
+    def get_raw_data(self, instrument_token, time_type, from_time, to_time, auth):
         #todo add a cache layer to handle already asked requests or read from a file if downloaded
-        from_time = datetime.strptime(from_time, '%Y-%m-%d')
-        to_time = datetime.strptime(to_time, '%Y-%m-%d')
+        from_time = type(from_time) == datetime and from_time or datetime.strptime(from_time, '%Y-%m-%d')
+        to_time = type(to_time) == datetime and to_time or datetime.strptime(to_time, '%Y-%m-%d')
         candles = []
         try:
             time_type = int(time_type)
@@ -45,8 +47,13 @@ class History:
             next_time = next_time if next_time < to_time else to_time
             url = self.url.format(instrument_token, time_type, from_time.strftime('%Y-%m-%d'), next_time.strftime('%Y-%m-%d'))
             from_time = next_time + timedelta(days=1)
-            response = requests.get(url)
+            headers = {
+                "X-Kite-Version": "3",
+                "Authorization": auth
+            }
+            response = requests.get(url, headers=headers)
             response = response.content.decode('utf-8')
+
             data = json.loads(response)
             data = data['data']['candles']
             candles.extend(data)
@@ -239,9 +246,25 @@ class Candles:
 
     def get_last_candles(self, count=1, offset=0):
         if(offset < 0):
-            return self.candles[-count+offset:offset]
+            candles = self.candles[-count+offset:offset]
+            candles.extend([{
+                'high': len(self.current_range) > 0 and max(self.current_range) or 0,
+                'low': len(self.current_range) > 0 and min(self.current_range) or 0,
+                'open': len(self.current_range) > 0 and self.current_range[0] or 0,
+                'close': len(self.current_range) > 0 and self.current_range[-1] or 0,
+                'time': self.start_time.time()
+            }])
+            return candles
         else:
-            return self.candles[-count:]
+            candles = self.candles[-count:]
+            candles.extend([{
+                'high': max(self.current_range),
+                'low': min(self.current_range),
+                'open': self.current_range[0],
+                'close': self.current_range[-1],
+                'time': self.start_time.time()
+            }])
+            return candles
 
     def pop_extra_candles(self):
         while(self.max_candles and len(self.candles) > self.max_candles):
@@ -254,12 +277,11 @@ class Candles:
         current_candle['open'] = self.current_range[0]
         current_candle['close'] = self.current_range.pop()
         current_candle['time'] = self.start_time.time()
-
         self.pop_extra_candles()
         self.candles.append(current_candle)
         self.current_range = [current_candle['close']]
         self.next_time = self.current_time + timedelta(minutes=self.timeperiod)
-        if(self.next_time.time() > dt.time(hour=15,minute=30, second=0)):
+        if(self.next_time.time() > dt.time(hour=15,minute=31, second=0)): #when the end time is reached, the addPrice should look for next time 9.15 of the next day
             next_time = dt.time(hour=9, minute=15, second=0)# + (self.next_time.time() - dt.time(hour=15,minute=30,second=0))
             self.next_time = self.next_time.replace(hour=next_time.hour, minute=next_time.minute, second=next_time.second)
             self.next_time = self.next_time + timedelta(minutes=self.timeperiod)

@@ -3,8 +3,13 @@ import time
 from pathlib import Path
 from datetime import datetime,timedelta
 from threading import Thread
+from datetime import datetime
 import pdb
-
+import requests
+from mapping import urls
+import logging
+from kiteconnect import KiteTicker
+from multiprocessing import Queue, Process
 from observer import Subject, Observer
 
 no_save = None
@@ -58,6 +63,19 @@ class DataFeed(Subject):
         thread.start()
         return thread
 
+    def automate(self, tokens=[], history=None, auth=None, callback = None):
+        queue = Queue()
+        p = Process(target=self.start_automation, args=(tokens, history, auth, queue), daemon=False)
+        p.start()
+        while(True):
+            try:
+                msg = queue.get(block=True)
+                print(msg)
+                self.notify(msg)
+            except Exception as e:
+                print(e)
+        return queue
+
     def start_simulation(self, start_time=None, end_time=None, real_time=False, callback=None):
         global no_save
         no_save = True
@@ -77,6 +95,8 @@ class DataFeed(Subject):
                     row = next(f).strip().split(', ')
                     data = {'sm': False}
                     for x in range(len(row)):
+                        if(headers[x] == 'lastPrice'):
+                            row[x] = float(row[x])
                         data[headers[x]] = row[x]
                     if(real_time):
                         now = int(data['time'])
@@ -97,27 +117,66 @@ class DataFeed(Subject):
         if callback:
             callback()
 
-    def start_backtest(self, data={}, callback=None):
-        while(data['candles']):
-            remove = []
-            for token in data['candles']:
-                try:
-                    o = {'token': token, 'sm': True}
-                    d = data['candles'][token].pop(0)
-                    a = {}
-                    a['time'], a['open'], a['high'], a['low'], a['close'], a['volume'] = d
-                    a['sm'] = False
-                    a['isCandle'] = True
-                    a['time'] = int(datetime.strptime(a['time'],'%Y-%m-%dT%H:%M:%S+0530').timestamp())
-                    a['interval'] = (data['interval'] * 60) #in seconds
-                    o.update(a)
-                    self.notify(o)
-                except IndexError:
-                    remove.append(token)
-            for x in remove:
-                data['candles'].pop(x)
+    def start_backtest(self, data=[], callback=None):
+        if(len(data) < 2):
+            print("Need FromDate and ToDate")
+        params = {
+            'instrument_tokens[]': data[2],
+            'from': data[0],
+            'to': data[1]
+        }
+        stream = requests.get(urls['stream_history'], params=params, stream=True)
+        for line in stream.iter_lines():
+            tick = dict()
+            tick['time'], tick['open'], tick['high'], tick['low'], tick['close'], tick['volume'], tick['token'], tick['interval'] = json.loads(line.decode('utf-8'))
+            tick['sm'] = False
+            tick['isCandle'] = True
+            tick['time'] = int(datetime.strptime(tick['time'],'%Y-%m-%dT%H:%M:%S+0530').timestamp())
+            self.notify(tick)
         if callback:
             callback()
+
+    def start_automation(self, tokens, history, auth, queue, callback=None):
+        kws = KiteTicker("kitefront", "wPXXjA5tJE8KJyWN753rbGnf5lXlzU0Q")
+        self.load_history(tokens, history, auth)
+        kws.socket_url = "wss://ws.zerodha.com/?api_key=kitefront&user_id=MK4445&public_token=wPXXjA5tJE8KJyWN753rbGnf5lXlzU0Q&uid=1587463057403&user-agent=kite3-web&version=2.4.0"
+        print("Started separate process for data feed")
+        def on_ticks(ws, ticks):
+            for tick in ticks:
+                tick['lastPrice'] = tick['last_price']
+                tick['token'] = tick['instrument_token']
+                tick['time'] = int(datetime.now().timestamp())
+                queue.put(tick, block=False)
+
+        def on_connect(ws, response):
+            ws.subscribe(tokens)
+
+        def on_close(ws, code, reason):
+            ws.stop()
+            exit()
+
+        kws.on_ticks = on_ticks
+        kws.on_connect = on_connect
+        kws.on_close = on_close
+        kws.connect()
+
+    def load_history(self, tokens, history, auth):
+        fromTime = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d")
+        toTime = datetime.now()
+        for token in tokens:
+            print("Loading history for {}".format(token))
+            candles = history.get_raw_data(token, 1, fromTime, toTime, auth)
+            for candle in candles:
+                tick = dict()
+                candle[-1] = int(token)
+                candle.append(60)
+                tick['time'], tick['open'], tick['high'], tick['low'], tick['close'], tick['token'], tick['interval'] = candle
+                tick['sm'] = False
+                tick['isCandle'] = True
+                tick['noTrade'] = True
+                tick['time'] = int(datetime.strptime(
+                    tick['time'], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
+                self.notify(tick)
 
 class DataSaver(Observer):
     def __init__(self, filepath):

@@ -1,4 +1,5 @@
 
+from kiteconnect import KiteTicker
 import logging
 import logging.config
 logging.config.fileConfig(fname='logger.conf', disable_existing_loggers=False)
@@ -13,7 +14,7 @@ import numpy as np
 import requests
 import schedule
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from multiprocessing import Process, Queue, Pipe
 from threading import Thread, Lock
 from pprint import pprint
@@ -40,7 +41,7 @@ q1 = Queue()
 dataFeed = DataFeed(save=True, filepath='D:\\programs\\nseTools\\zerodha\\output')
 process_args = ['C:\\Program Files\\nodejs\\node.exe', '--inspect=7000', 'D:\\programs\\nseTools\\zerodha\\zerodha_socket.js']
 instruments = pd.read_csv("D:\\programs\\nseTools\\zerodha\\instruments.csv")
-history = History(url="https://kite.zerodha.com/oms/instruments/historical/{}/{}?from={}&to={}", instruments=instruments)
+history = History(url=urls['get_history_kite'], instruments=instruments)
 
 #for live trade
 sm = StrategyManager(outputPipe=q1)
@@ -60,53 +61,24 @@ def get_instruments(data, result):
         'data': output
     }
         
-def start_ws_stream(data={}, result={}, load_past = True):
+def start_ws_stream(data={}, load_past = True):
     global storage
-    (chi, par) = Pipe(True)
-    pipe = WebSocketPipe(process_args, par, chi)
-    storage['ws_pipe'] = pipe
-    thread = Thread(target=web_socket, args=(pipe, None))
-    thread.start()
-
-    tokens = []
-    t_t_s = {}
-    stocks = None
-    auth = None
     if(data):
         stocks = data['stocks']
-        auth = data['auth']
     else:
         r = requests.get(urls['stocks'])
         stocks = json.loads(r.content)['stocks']
+    tokens = [int(x.get('token')) for x in stocks]
+    storage['tokens'] = tokens
+    storage['continueMain'] = True
 
-    for stock in stocks:
-        if stock:
-            try:
-                if(not stock.get('token')):
-                    token = int(history.get_instrument_token(
-                        stock['name'], "NSE", "EQ"))
-                    tokens.append(token)
-                    stock['token'] = int(token)
-                else:
-                    tokens.append(int(stock['token']))
-                t_t_s[int(stock['token'])] = stock['name']
-            except:
-                print("Exception in {}".format(stock['name']))
-    pipe_data = {
-        'status': "subscription",
-        'ids': tokens,
-        'auth': auth
-    }
-    storage['tokens_to_symbols'] = t_t_s
-
-    pipe.write(json.dumps(pipe_data))  # subscribed to the tokens in websocket
+    print("Historical Data Loaded")
     print("Websocket streaming started")
 
-def start_automation(data={}, result={}):
+def start_automation(data={}):
     global sm
     global tm
     print("Starting Automation")
-    start_ws_stream(data=data, result=result, load_past = True)
     sm.load_strategies(strategies=data.get('strategies'))
     trades = {}
     for s in data.get('strategies'):
@@ -115,9 +87,15 @@ def start_automation(data={}, result={}):
     tm.load_trades(trades=trades)
     dataFeed.attach(sm)
     dataFeed.attach(tm)
+    start_ws_stream(data=data, load_past=True)
     logger.info("Attached to dataFeed; {}".format(sm))
     logger.info("Attached to dataFeed; {}".format(tm))
     logger.info("Started Automation")
+    return {
+        'handler': 'start_automation',
+        'status': 'success',
+        'report': "nothing"
+    }
 
 def simulation_callback():
     global ssm
@@ -126,7 +104,7 @@ def simulation_callback():
     dataFeed.detach(stm)
     stm.stop()
 
-def simulate_automation(data, result):
+def simulate_automation(data):
     global ssm
     global stm
     print("Simulating Automation")
@@ -139,7 +117,7 @@ def simulate_automation(data, result):
 
         ssm.load_strategies(strategies=data.get('strategies'))
         trades = {}
-        
+        pprint(data)
         for s in data.get('strategies'):
             if(s.get('trades')):
                 trades[s['_id']+"_"+s['token']] = s['trades']
@@ -154,11 +132,27 @@ def simulate_automation(data, result):
             real_time=data.get('realTime'),
             callback=simulation_callback).join() #realTime bool - for real lagging
         print("Simulation Ended")
+    return {
+        'handler': 'simulate_automation',
+        'status': 'success'
+    }
 
-def run_backtest(data, result):
+def backtest_callback():
     global ssm
     global stm
-    backtestdata = {'candles':{}, 'interval': 1}
+    logger.info("End of dataFeed")
+    logger.info("End of backtest")
+    logger.info("Generating Report")
+
+    report = stm.get_report()
+    reportLogger.info("\n" + json.dumps(report))
+    dataFeed.detach(ssm)
+    dataFeed.detach(stm)
+    stm.stop()
+
+def run_backtest(data):
+    global ssm
+    global stm
     args = data.get('args')
     logger.info("Running backtest from {} to {} in {}".format(*args))
     
@@ -169,78 +163,66 @@ def run_backtest(data, result):
     trades = {}
     for s in data.get('strategies'):
         if(s.get('trades')):
-            s['trades'] = list(map(lambda x: x.update({'trader':'simulated', 'strategy': s['name']}) or x, s['trades']))
+            # s['trades'] = list(map(lambda x: x.update({'trader':'simulated', 'strategy': s['name']}) or x, s['trades']))
             trades[s['_id']+"_"+s['token']] = s['trades'] #TODO need to generalize it for extending more
-        if(not backtestdata.get(s['token'])):
-            d = history.get_raw_data(
-                s["token"],
-                args[2],
-                datetime.strptime(args[0], '%m-%d-%Y').strftime('%Y-%m-%d'),
-                datetime.strptime(args[1], '%m-%d-%Y').strftime('%Y-%m-%d')
-            )
-            backtestdata['candles'][s['token']] = d
-    backtestdata['interval'] = int(args[2])
-    dataFeed.attach(ssm, simulation=True)
-    dataFeed.attach(stm, simulation=True)
+    dataFeed.attach(ssm, simulation=False)
+    dataFeed.attach(stm, simulation=False)
     logger.info("Attached to dataFeed; {}".format(ssm))
     logger.info("Attached to dataFeed; {}".format(stm))
     stm.load_trades(trades=trades)
     dataFeed.backtest(
-        data = backtestdata,
-        callback = None
-    ).join()
-    logger.info("End of dataFeed")
-    simulation_callback()
-    logger.info("End of backtest")
-    logger.info("Generating Report")
-
-    report = stm.get_report()
-    reportLogger.info("\n" + json.dumps(report))
-    result['r'] = {
+        data = args,
+        callback = backtest_callback
+    )
+    return {
         'handler': 'run_backtest',
         'status': 'success',
-        'report': report
+        'report': "nothing"
     }
 
-def send_automation_data(data, result):
-    storage['ws_pipe'].write(json.dumps(data))
-    result['r'] = { #TODO remove this kind of communication
+def send_automation_data(data):
+    # storage['ws_pipe'].write(json.dumps(data))
+    return { #TODO remove this kind of communication
         'handler': 'send_automation_data',
         'status': 'success'
     }
 
-def send_automation_subscription(data, result):
+def send_automation_subscription(data):
     stocks = data['data']
     tokens = []
     for stock in stocks:
         if stock:
             tokens.append(int(history.get_instrument_token(stock, 'NSE', 'EQ')))
     data['data'] = tokens
-    send_automation_data(data, result)
+    send_automation_data(data)
+    return {
+        'handler': 'send_automation_subscription',
+        'status': 'success'
+    }
 
-def stop_automation(data, result):
+def stop_automation(data):
     global sm
     global tm
     dataFeed.detach(sm)
     dataFeed.detach(tm)
     tm.stop()
-    storage['ws_pipe'].write(json.dumps({'status':'exit'}))
-    result['r'] = {
+    # storage['ws_pipe'].write(json.dumps({'status':'exit'}))
+    return {
         'handler': 'stop_automation',
         'status': 'success'
     }
 
-def force_stop(data, result):
-    result['r'] = {
+def force_stop(data):
+    return {
         'handler': 'force_stop',
         'status': 'success'
     }
     sys.exit()
 
-def add_strategy(data, result):
+def add_strategy(data):
     print(data)
     sm.add_strategy()
-    result['r'] = {
+    return {
         'handler': 'add_strategy',
         'status': 'success'
     }
@@ -259,51 +241,57 @@ handlers = {
 
 #------------------------------------------------- ALL UTILITY, STREAM READ AND STREAM WRITE FUNCTIONS ----------------------------------------------------
 
-def write_to_node(data):
-    requests.post('http://localhost:3000/auto/process', data=data)
 
-def web_socket(pipe, buffer=None):
-    global dataFeed
-     #record the live data for the process
+def start_ticker(tokens, history, auth='', callback=None):
+    kws = KiteTicker("kitefront", "wPXXjA5tJE8KJyWN753rbGnf5lXlzU0Q")
+    kws.socket_url = "wss://ws.zerodha.com/?api_key=kitefront&user_id=MK4445&public_token=wPXXjA5tJE8KJyWN753rbGnf5lXlzU0Q&uid=1587463057403&user-agent=kite3-web&version=2.4.0"
+    print("Started separate process for data feed")
+
+    def on_ticks(ws, ticks):
+        for tick in ticks:
+            tick['lastPrice'] = tick['last_price']
+            tick['token'] = tick['instrument_token']
+            tick['time'] = int(datetime.now().timestamp())
+            print(tick)
+            dataFeed.notify(tick)
+
+    def on_connect(ws, response):
+        ws.subscribe(storage['tokens'])
+
+    def on_close(ws, code, reason):
+        pass
+
+    kws.on_ticks = on_ticks
+    kws.on_connect = on_connect
+    kws.on_close = on_close
     while(True):
-        data = pipe.read().decode('utf-8')
-        feedLogger.debug(data)
-        data = json.loads(data)
-
-        if(data['status'] == 'success'):
-            if(type(data['data']) is list): #list for price data feed
-                for d in data['data']:
-                    d['symbol'] = storage['tokens_to_symbols'][int(d['token'])]
-                    dataFeed.notify(d)
-
-            if(type(data['data']) is dict): #dict for json object - such as feedback from websockets in case of zerodha, or any other meta data
-                tm.update(data['data'])
-
-        if(data['status'] == 'exit'):
-            write_to_node({
-                'handler': 'end_automation',
-                'status': 'success'
-            })
+        if(storage.get('continueMain')):
             break
-        if(data['status'] == 'console'):
-            print(data['data'])
-        # except:
-        #     print("Exception and Exit in Data Feed Thread")
-        #     exit()
+        time.sleep(2)
+    load_history(storage['tokens'], history, auth)
+    print("WebSocket Connected")
+    kws.connect()
 
-def process_thread(handler, data, result):
-    try:
-        thread = Thread(target=handlers[handler], args=(data, result))
-        thread.start()
-        return thread
-    except:
-        print("Exception")
-        result['r'] = {
-            'handler': handler,
-            'status': 'error'
-        }
-    return None
-    
+def load_history(tokens, history, auth):
+    fromTime = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    toTime = datetime.now()
+    for token in tokens:
+        print("Loading history for {}".format(token))
+        candles = history.get_raw_data(token, 1, fromTime, toTime, auth)
+        for candle in candles:
+            tick = dict()
+            candle[-1] = int(token)
+            candle.append(60)
+            tick['time'], tick['open'], tick['high'], tick['low'], tick['close'], tick['token'], tick['interval'] = candle
+            tick['sm'] = False
+            tick['isCandle'] = True
+            tick['noTrade'] = True
+            tick['time'] = int(datetime.strptime(
+                tick['time'], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
+            dataFeed.notify(tick)
+    print("History Loaded")
+
+
 def main(handlers):
     app = Flask(__name__)
     api = Api(app)
@@ -311,58 +299,26 @@ def main(handlers):
     class Response(Resource):
         def post(self):
             r = request.json['data']
-            result = {'r':{}}
             try:
-                thread = process_thread(r['handler'], r['data'], result)
-                thread.join()
-                return result['r']
+                return handlers[r['handler']](r['data'])
             except:
                 print("Exception")
 
     api.add_resource(Response, '/')
+    auth = None
     while True:
         try:
-            requests.get(urls['start_process'])
+            auth = requests.get(urls['start_process'])
             break
         except:
             print("Polling")
             continue
+    thread = Thread(target=app_start, args=(app,))
+    thread.start()
+    start_ticker([], history, auth=auth.content)
+    thread.join()
 
+def app_start(app):
     app.run(debug=False)
     
 main(handlers)
-
-'''
-class Buffer:
-    def __init__(self, default=list):
-        self.default = list
-        self.buffer = None
-        self.stream = None
-        self.__initialize()
-
-    def __initialize(self):
-        self.stream = self.buffer
-        if(self.default):
-            self.buffer = defaultdict(list)
-        else:
-            self.buffer = {}
-
-    def store(self, key, value):
-        if(key):
-            self.buffer[key] = value
-            return True
-        return False
-
-    def get(self, key):
-        return self.buffer.get(key)
-
-    def start_stream(self):
-        self.__initialize()
-
-    def finish_stream(self):
-        self.stream = None
-        self.stream_finished = True
-
-    def is_stream_finished(self):
-        return (self.stream_finished is not None)
-'''

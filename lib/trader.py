@@ -163,17 +163,17 @@ class ZerodhaTrader(Trader):
             # should check with zerodha for order executed
             d = r.get('data')
             order['executed'] = True #don't need this
-            order['id'] = d['_id']
+            order['id'] = d['order_id']
             order['variety'] = 'bo'
             order['token'] = params.get('token')
             #orders on particular token
             orders_on_token = self.orders.setdefault(int(order['token']), {})
-            orders_on_token[d['_id']] = order
+            orders_on_token[d['order_id']] = order
             self.fund = self.fund - price
             lt_logger.info(add_log(order, "TRADE BO\t: order_id: {} - [{}]".format(order['id'], lt(params.get('time')))))
             return {
                 'variety': 'bo',
-                'order_id': d.get('_id')
+                'order_id': d.get('order_id')
             }
         return None
 
@@ -193,15 +193,15 @@ class ZerodhaTrader(Trader):
             # should check with zerodha for order execution
             d = r.get('data')
             order['executed'] = True
-            order['id'] = d.get('_id')
+            order['id'] = d.get('order_id')
             order['variety'] = 'limit'
             order['token'] = params.get('token')
 
             orders_on_token = self.orders.setdefault(int(order['token']), {})
-            orders_on_token[d['_id']] = order
+            orders_on_token[d['order_id']] = order
             self.fund = self.fund - price
             lt_logger.info(add_log(order, "TRADE LIMIT\t: order_id: {} - [{}]".format(order['id'], lt(params.get('time')))))
-            return d['_id']
+            return d['order_id']
         return None
 
     def trade_co(self, stock, otype, price, target, stoploss, quantity, params):
@@ -209,9 +209,9 @@ class ZerodhaTrader(Trader):
             'stock': stock,
             'type': otype,
             'quantity': quantity,
-            'price': price,
-            'target': target,
-            'trigger_price': (float(params.get('lastPrice')) - float(stoploss), float(params.get('lastPrice')) + float(stoploss))[otype == 'sell'],
+            'price': round_off(price),
+            'target': round_off(target),
+            'trigger_price': round_off((float(params.get('lastPrice')) - float(stoploss), float(params.get('lastPrice')) + float(stoploss))[otype == 'sell']),
             'original': not params.get('sm'),
             'entryPrice': params.get('lastPrice'),
             'entryTime': int(params.get('time')),
@@ -222,20 +222,21 @@ class ZerodhaTrader(Trader):
         }
         r = requests.post(CO_URL, json={'co': order})
         r = json.loads(r.content)
+        print(r)
         if(r.get('status') == 'success'):
             d = r.get('data')
             order['executed'] = True
-            order['id'] = d.get('_id')
+            order['id'] = d.get('order_id')
             order['variety'] = 'co'
             order['token'] = params.get('token')
 
             orders_on_token = self.orders.setdefault(int(order['token']), {})
-            orders_on_token[d['_id']] = order
+            orders_on_token[d['order_id']] = order
             self.fund = self.fund - price
             lt_logger.info(add_log(order, "TRADE CO\t: order_id: {} - [{}]".format(order['id'], lt(params.get('time')))))
             return {
                 'variety': 'co',
-                'order_id': d.get("_id")
+                'order_id': d.get("order_id")
             }
         return None
 
@@ -244,22 +245,23 @@ class ZerodhaTrader(Trader):
 
     #function to exit the trade with a particular orderId or the order hash, exiting format allowed only for Bracket order for now
     #there is an endpoint already at the trader section for deleting BO and CO orders
-    def trade_exit(self, order=None, orderId=None):
-        if(orderId):
-            order = self.orders.get(orderId)
+    def trade_exit(self, order):
         if(order):
+            print("Exiting")
+            print(order)
             #send exit request based on variety
             url = "{}/{}?order_id={}&variety={}".format(
-                self.VARIETY_URLS[order.variety], order.get('id'), order.get('id'), order.variety)
+                self.VARIETY_URLS[order['variety']], order.get('id'), order.get('id'), order['variety'])
             r = requests.delete(url)
             j = json.loads(r.content)
             return j['status']
         return False
 
     def trade(self, stock=None, otype=None, price=0, target=0, stoploss=0, quantity=1, params={}):
-        for _,order in self.orders.items():
-            if(not order.get('exitPrice')):
-                return False
+        for _,token_to_orders in self.orders.items():
+            for _,order in token_to_orders.items():
+                if(not order.get('exitPrice')):
+                    return False
             
         Trader.trade(self, stock, otype, price, target,
                      stoploss, quantity, params)
@@ -315,6 +317,7 @@ class ZerodhaTrader(Trader):
                                 lt_logger.error("ExitTime is NONE")
                                 lt_logger.error(order.get('log') or 'NONE')
                         self.trade_exit(order)
+                        del(orders[order_id])
 
                     except Exception:
                         lt_logger.error("Exception occurred")
@@ -337,6 +340,7 @@ class ZerodhaTrader(Trader):
                     'exitTime': data.get('time')
                 })
                 self.trade_exit(order)
+                del(orders[orderId])
                 lt_logger.info(add_log(order, "Closed by counter strategy trade: {} - {} on [{} - {}]".format(
                     args[1], order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
             if(order.get('status') == self.PENDING):
@@ -345,7 +349,8 @@ class ZerodhaTrader(Trader):
                     'exitPrice': data.get('lastPrice'),
                     'exitTime': data.get('time')
                 })
-                self.trade_exit()
+                self.trade_exit(order)
+                del(orders[orderId])
                 lt_logger.info(add_log(order, "Cancelled by counter strategy trade: {} - {} on [{} - {}]".format(
                     args[1], order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
         return args[1]
@@ -353,7 +358,8 @@ class ZerodhaTrader(Trader):
     def trackOrders(self, data):
         #TODO exit all trades at the end of intraday
         orders = self.orders.get(int(data.get('token'))) or {}
-        for order_id in orders:
+        order_ids = list(orders)
+        for order_id in order_ids:
             order = orders[order_id]
             try:
                 price = order.get('entryPrice')
@@ -361,14 +367,16 @@ class ZerodhaTrader(Trader):
 
                 if(status and status == self.PENDING):
                     ### ------------------- FOR PENDING ORDERS  ---------------------------------- ###
-                    if(datetime.datetime.fromtimestamp(int(data.get("time"))).time() >= datetime.time(hour=15, minute=20)):
+                    if(datetime.datetime.fromtimestamp(int(data.get("time"))).time() >= datetime.time(hour=15, minute=25) or 
+                        datetime.datetime.fromtimestamp(int(data.get("time"))).time() <= datetime.time(hour=9, minute=14)):
                         # ------     1. Exiting the trade   ----------- #
                         order.update({
                             'status': self.CANCELLED,
                             'exitPrice': order.setdefault('lastData', {}).get('close'),
                             'exitTime': order.setdefault('lastData', {}).get('time'),
                         })
-                        self.trade_exit(order=order)
+                        self.trade_exit(order)
+                        del(orders[order_id])
                         lt_logger.info(add_log(order, "Cancelled trade: {} - {} on [{} - {}]".format(
                             order_id, order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
                         if(not order['exitTime']):
@@ -393,13 +401,16 @@ class ZerodhaTrader(Trader):
                     target = order.get('target') and (
                         price + order.get('target'), price - order.get('target'))[order.get('type') == self.SELL]
 
-                    if(datetime.datetime.fromtimestamp(int(data.get("time"))).time() >= datetime.time(hour=15, minute=20)):
+                    if(datetime.datetime.fromtimestamp(int(data.get("time"))).time() >= datetime.time(hour=15, minute=25) or 
+                        datetime.datetime.fromtimestamp(int(data.get("time"))).time() <= datetime.time(hour=9, minute=14)):
                         # ------     1. Exiting the trade   ----------- #
                         order.update({
                             'status': self.EXITED,
                             'exitPrice': order.setdefault('lastData', {}).get('close'),
                             'exitTime': order.setdefault('lastData', {}).get('time'),
                         })
+                        self.trade_exit(order)
+                        del(orders[order_id])
                         lt_logger.info(add_log(order, "Closed trade: {} - {} on [{} - {}]".format(
                             order_id, order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
 
@@ -410,6 +421,8 @@ class ZerodhaTrader(Trader):
                             'exitPrice': stoploss,
                             'exitTime': data.get('time')
                         })
+                        self.trade_exit(order)
+                        del(orders[order_id])
                         lt_logger.info(add_log(order, "Executed trade: {} - {} on [{} - {}]".format(
                             order_id, order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
                         #TODO update the exit time in database
@@ -422,6 +435,8 @@ class ZerodhaTrader(Trader):
                             'exitPrice': target,
                             'exitTime': data.get('time')
                         })
+                        self.trade_exit(order)
+                        del(orders[order_id])
                         lt_logger.info(add_log(order, "Executed trade: {} - {} on [{} - {}]".format(
                             order_id, order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
                         #TODO update the exit time in database
@@ -432,12 +447,12 @@ class ZerodhaTrader(Trader):
                 add_log(order, 'lastData updated: '+str(data))
             order['lastData'] = data
 
-    def hasPriceCrossed(self, value, candle, otype):
+    def hasPriceCrossed(self, value, data, otype):
         value = float(value)
         if(otype == self.BUY):
-            return (value <= float(candle['high']))
+            return (value <= float(data['lastPrice']))
         elif(otype == self.SELL):
-            return (value >= float(candle['low']))
+            return (value >= float(data['lastPrice']))
 
 class SimulatedTrader(Trader, Observer):
     '''
@@ -516,9 +531,9 @@ class SimulatedTrader(Trader, Observer):
     def trade_co(self, stock, otype, price, stoploss, quantity, params):
         order = {
             'stock': stock,
-            'price': price,
+            'price': round_off(price),
             'type': otype,
-            'trigger_price': (float(params.get('lastPrice')) - float(stoploss), float(params.get('lastPrice')) + float(stoploss))[otype == 'sell'],
+            'trigger_price':round_off((float(params.get('lastPrice')) - float(stoploss), float(params.get('lastPrice')) + float(stoploss))[otype == 'sell']),
             'quantity': quantity,
             'original': not params.get('sm'),
             'entryPrice': params.get('lastPrice'),
@@ -538,22 +553,31 @@ class SimulatedTrader(Trader, Observer):
         }
 
     def trade(self, stock=None, otype=None, price=0, target=0, stoploss=0, quantity=1, params={}):
-        if(self.orders):
-            return None
+        try:
+            for _,token_to_orders in self.orders.items():
+                for _,order in token_to_orders.items():
+                    if(not order.get('exitPrice')):
+                        return False
 
-        Trader.trade(self, stock, otype, price, target,
-                     stoploss, quantity, params)
-        if(target is 0 and stoploss is not 0):
-            return self.trade_co(stock, otype, price, stoploss, quantity, params)
-        if(target is not 0 and stoploss is not 0):
-            return self.trade_bo(stock, otype, price, target, stoploss, quantity, params)
-        if(target is 0 and stoploss is 0):
-            return self.trade_limit(stock, otype, price, quantity, params)
+            Trader.trade(self, stock, otype, price, target,
+                        stoploss, quantity, params)
+            if(target is 0 and stoploss is not 0):
+                return self.trade_co(stock, otype, price, stoploss, quantity, params)
+            if(target is not 0 and stoploss is not 0):
+                return self.trade_co(stock, otype, price, target, stoploss, quantity, params)
+            if(target is 0 and stoploss is 0):
+                return self.trade_limit(stock, otype, price, quantity, params)
+        except Exception as e:
+            lt_logger.exception(e)
+            for _,token_to_orders in self.orders.items():
+                print(token_to_orders)
+                print()
+                for _,order in token_to_orders:
+                    print(order)
 
-    def trade_exit(self, order=None, orderId=None):
+    def trade_exit(self, order):
         if(order):
-            order['status'] = self.EXITED
-            return order
+            return True
         return False
 
     def add_fund(self, fund):
@@ -589,7 +613,8 @@ class SimulatedTrader(Trader, Observer):
                             if(not order['exitTime']):
                                 bt_logger.error("ExitTime is NONE")
                                 bt_logger.error(order.get('log') or 'NONE')
-
+                        self.trade_exit(order)
+                        del(orders[order_id])
                     except Exception as e:
                         bt_logger.error("Exception occurred")
                         bt_logger.exception(order.get('log'))
@@ -608,6 +633,8 @@ class SimulatedTrader(Trader, Observer):
                     'exitPrice': data.get('lastPrice'),
                     'exitTime': data.get('time')
                 })
+                self.trade_exit(order)
+                del(orders[orderId])
                 bt_logger.info(add_log(order, "Closed by counter strategy trade: {} - {} on [{} - {}]".format(args[1], order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
             if(order.get('status') == self.PENDING):
                 order.update({
@@ -615,6 +642,8 @@ class SimulatedTrader(Trader, Observer):
                     'exitPrice': data.get('lastPrice'),
                     'exitTime': data.get('time')
                 })
+                self.trade_exit(order)
+                del(orders[orderId])
                 bt_logger.info(add_log(order, "Cancelled by counter strategy trade: {} - {} on [{} - {}]".format(args[1], order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
         return args[1]
 
@@ -625,7 +654,8 @@ class SimulatedTrader(Trader, Observer):
 
         #TODO exit all trades at the end of intraday
         orders = self.orders.get(int(data.get('token'))) or {}
-        for order_id in orders:
+        order_ids = list(orders)
+        for order_id in order_ids:
             order = orders[order_id]
             try:
                 price = order.get('entryPrice')
@@ -640,6 +670,8 @@ class SimulatedTrader(Trader, Observer):
                             'exitPrice': order.setdefault('lastData', {}).get('close'),
                             'exitTime': order.setdefault('lastData', {}).get('time'),
                         })
+                        self.trade_exit(order)
+                        del(orders[order_id])
                         bt_logger.info(add_log(order, "Cancelled trade: {} - {} on [{} - {}]".format(order_id, order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
                         if(not order['exitTime']):
                             bt_logger.error("ExitTime is NONE")
@@ -664,6 +696,8 @@ class SimulatedTrader(Trader, Observer):
                             'exitPrice': order.setdefault('lastData', {}).get('close'),
                             'exitTime': order.setdefault('lastData', {}).get('time'),
                         })
+                        self.trade_exit(order)
+                        del(orders[order_id])
                         bt_logger.info(add_log(order,"Closed trade: {} - {} on [{} - {}]".format(order_id, order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
 
                     elif(stoploss and self.hasPriceCrossed(stoploss, data, self.get_other_type(order.get('type')))):
@@ -673,6 +707,8 @@ class SimulatedTrader(Trader, Observer):
                             'exitPrice': stoploss,
                             'exitTime': data.get('time')
                         })
+                        self.trade_exit(order)
+                        del(orders[order_id])
                         bt_logger.info(add_log(order,"Executed trade: {} - {} on [{} - {}]".format(order_id, order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
                         #TODO update the exit time in database
                         #TODO update the exit price in database
@@ -684,6 +720,8 @@ class SimulatedTrader(Trader, Observer):
                             'exitPrice': target,
                             'exitTime': data.get('time')
                         })
+                        self.trade_exit(order)
+                        del(orders[order_id])
                         bt_logger.info(add_log(order,"Executed trade: {} - {} on [{} - {}]".format(order_id, order['stock'], lt(order['entryTime']), lt(order['exitTime']))))
                         #TODO update the exit time in database
                         #TODO update the exit price in database
@@ -718,3 +756,7 @@ class SimulatedTrader(Trader, Observer):
             return self.SELL
         else:
             return self.BUY
+
+
+def round_off(v):
+    return round((v/0.05) * 0.05, 2)

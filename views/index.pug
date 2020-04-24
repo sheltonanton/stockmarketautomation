@@ -46,12 +46,14 @@ block content
       //-   div(style={['border-radius']: '120px', border: '1px solid #ddd',position: 'absolute', width: '70%', height: '70%', margin:'15%', ['z-index']: -9997})
       //-   img(src="/images/pokemon.png" id="fun_image" style={position: 'absolute', ['z-index']: 1, cursor: 'pointer'})
       //-   script(type="text/javascript") window.addEventListener('load', function(){funImageInit()})
-    +card('Order Table', {width: '656px', height: '270px'})
-      .flex-row
-        div.order_table
-          table#order_table
-        div.order_result(id='order_result')
-        +onloadstart("order_get_data('order_table','order_result')") 
+
+      // these should be later created ***
+    //- +card('Order Table', {width: '656px', height: '270px'})
+    //-   .flex-row
+    //-     div.order_table
+    //-       table#order_table
+    //-     div.order_result(id='order_result')
+        //- +onloadstart("order_get_data('order_table','order_result')") 
     
-    +card("Live Feed", {width: '900px', height: '270px'})
-      #live_feed(style='height:90%;overflow-y:auto;')
+    //- +card("Live Feed", {width: '900px', height: '270px'})
+    //-   #live_feed(style='height:90%;overflow-y:auto;')

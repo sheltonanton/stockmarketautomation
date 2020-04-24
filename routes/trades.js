@@ -1,4 +1,5 @@
 const express = require('express');
+const event = require('./events');
 const router = express.Router();
 const Trade = require('../models/trade')
 
@@ -28,7 +29,7 @@ router.get('/:id', function (req, res, next) {
 router.post('/', function (req, res, next) {
     let data = req.body.trade;
     Trade.create(data).then((r, err) => {
-        express.ws_write('SAVED TRADE: ' + data.name)
+        event.notifications.push('SAVED TRADE: ' + data.name)
         if(! err){
             res.send({
                 trade: r
@@ -44,7 +45,7 @@ router.delete('/:id', function (req, res, next) {
     Trade.deleteOne({
         _id: id
     }, function (err, d) {
-        express.ws_write('', 'DELETED TRADE: ' + params['name'])
+        event.notifications.push('', 'DELETED TRADE: ' + params['name'])
         res_send(res, err, d)
     })
 })
@@ -56,7 +57,7 @@ router.put('/:id', function (req, res, next) {
     Trade.updateOne({
         _id: id
     }, data, function (err, d) {
-        express.ws_write('UPDATED TRADE: ' + data['name'])
+        event.notifications.push('UPDATED TRADE: ' + data['name'])
         if(!err) res.send({trade: req.body.trade})
     })
 })

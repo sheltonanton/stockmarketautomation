@@ -10,6 +10,7 @@ from trader import lt
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger('flowLogger')
+feedLogger = logging.getLogger('feedLogger')
 class StrategyManager(Observer):
     '''
         Input of strategy manager will be the data feed
@@ -40,11 +41,12 @@ class StrategyManager(Observer):
                             }
                             request.update(strategy.args)
                             output.put(request)
-                            logger.info("Pushed into queue: {} - {} {}".format(lt(data['time']), strategy.args['name'], json.dumps(data)))
+                            # logger.info("Pushed into queue: {} - {} {}".format(lt(data['time']), strategy.args['name'], json.dumps(data)))
                             self.count = self.count + 1
                     except Exception as e:
                         print("Exception in Strategy {}".format(strategy.args['name']))
                         logger.exception(e)
+                        logger.exception(strategy.operation)
                         self.stocks[key].remove(strategy) #preventing the affected strategy from executing further
 
     def load_strategies(self, strategies):
@@ -98,7 +100,8 @@ class Strategy:
         d = {
             'price': data['lastPrice'],
             'time': data['time'],
-            'token': data['token']
+            'token': data['token'],
+            'lastPrice': data['lastPrice'] #TODO change to common as price
         }
         if(data.get('isCandle')):
             d.update({

@@ -10,10 +10,10 @@ const EntrySchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Trade'
     },
-    stock: {
+    stocks: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Stock'
-    },
+    }],
     counter: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Strategy'

@@ -1,9 +1,4 @@
-function start_process(){
-    
-}
-function stop_process(){
-
-}
+const event_url = "/events";
 
 async function login(){
     result = await send_api('/zerodha', 'post', {'Content-Type': 'application/json'}, JSON.stringify(parse_form(document.getElementById('login'))))
@@ -19,7 +14,6 @@ async function login(){
 async function isloggedin(){
     response = await send_api('/zerodha/isloggedin', 'get')
     change_status_loggedin(response.loggedin)
-    // setTimeout(isloggedin, 5000)
     return response
 }
 function change_status_loggedin(status){
@@ -292,31 +286,31 @@ function funImageInit(){
 var store = {};
 
 (async function(){
-    var ws = new WebSocket('ws://localhost:3030') //TODO need to clarify for same port and some namespace
-    ws.onopen = async function(){
-        ws.send(await auto_start_streaming())
-    }
-    ws.onmessage = function(wsm){
-        let data = JSON.parse(wsm.data);
+    var source = new EventSource(event_url);
+    source.onmessage = function(event){
+        let data = event.data;
         switch(data.status){
             case "loggedIn": {
                 change_status_loggedin(true)
                 userId = data.message;
-                var d = document.getElementById('user-'+userId)
-                if(d){d.innerHTML = d.innerHTML + ' (L)'} else {store['logged_user'] = userId}
+                var d = document.getElementById('user-' + userId)
+                if (d) {
+                    d.innerHTML = d.innerHTML + ' (L)'
+                } else {
+                    store['logged_user'] = userId
+                }
                 data.message = "Logged in successfully"
-                data.status = "success"
+                data.status = "success";
+                break;
             }
-            case "error":
-            case "warning":
-            case "success": {
-                auto_write_display(data);
-            }
-            default: {
-
-            }
+            case 'warning':
+            case 'error':
+            case 'success':
+                {
+                    auto_write_display(data);
+                    break;
+                }
         }
     }
     setTimeout(isloggedin, 0)
-    // await get_orb_stocks()
-}())
+}());

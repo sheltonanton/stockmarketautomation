@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const event = require('./events');
 const Entry = require('../models/entry');
 
 /* GET ALL ENTRIES */
@@ -28,7 +29,7 @@ router.get('/:id', function (req, res, next) {
 router.post('/', function (req, res, next) {
     let data = req.body.entry;
     Entry.create(data).then((r, err) => {
-        express.ws_write('SAVED ENTRY: ' + r._id)
+        event.notifications.push('SAVED ENTRY: ' + r._id)
         if (!err) {
             res.send({
                 entry: r
@@ -44,7 +45,7 @@ router.delete('/:id', function (req, res, next) {
     Entry.deleteOne({
         _id: id
     }, function (err, d) {
-        express.ws_write('', 'DELETED ENTRY: ' + params['id'])
+        event.notifications.push('', 'DELETED ENTRY: ' + params['id'])
         if (!err) {
             res.send({
                 entry: {
@@ -62,7 +63,7 @@ router.put('/:id', function (req, res, next) {
     Entry.updateOne({
         _id: id
     }, data, function (err, d) {
-        express.ws_write('UPDATED ENTRY: ' + data['name'])
+        event.notifications.push('UPDATED ENTRY: ' + data['name'])
         res_send(res, err, {
             entry: d
         })

@@ -1,16 +1,13 @@
 const express = require('express');
+const event = require('./events');
+const {getTrader} = require('../zerodha_orders');
 var router = express.Router();
 
-const Stock = require('../models/stock')
 const Property = require('../models/property')
-const User = require('../models/user')
 // const Entry = require('../models/entry')
 
 const login = require('../views/data/forms/login')
 const addUser = require('../views/data/forms/addUser')
-
-const {Zerodha} = require('../zerodha_orders')
-var z = null
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -18,29 +15,10 @@ router.get('/', function(req, res, next) {
     login,addUser
   });
 });
+
 router.get('/backtest', function(req, res, next){
   res.render('backtest', {})
 });
-
-// router.get('/entries_insert', function(req, res, next){
-//   model = req.body;
-//   stocks = model.stocks;
-//     Entry.find({}, function(err, d){
-//       for (var stock of stocks) {
-//         for(var a of d){
-//           Entry.create(data).then((r, err) => {
-//             express.ws_write('SAVED ENTRY: ' + r._id)
-//             if (!err) {
-//               res.send({
-//                 entry: r
-//               })
-//             }
-//           })
-//         }
-//       }
-//     })
-//   }
-// )
 
 router.get('/properties/:property', function(req, res, next){
   params = req.params;
@@ -100,7 +78,7 @@ router.put('/property', function(req, res, next){
   })
 })
 
-router.post('/zerodha', function(req, res, next) {
+router.post('/zerodha', async function(req, res, next) {
   (async function(){
     let {
       userid,
@@ -108,8 +86,10 @@ router.post('/zerodha', function(req, res, next) {
       pin = null
     } = req.body
     try{
-      z_login(userid, password, pin)
-      express.ws_write("Logged in successfully")
+      let trader = await getTrader();
+      let response = await trader.login(userid, password, pin);
+      console.log(response);
+      event.notifications.push("Logged in successfully")
       res.send({status: "success"})
     }catch(ex){
       console.log(ex);
@@ -118,8 +98,10 @@ router.post('/zerodha', function(req, res, next) {
   }())
 })
 
-router.get('/zerodha/isloggedin', function (req, res, next) {
-  if (z != null) {
+router.get('/zerodha/isloggedin', async function (req, res, next) {
+  let trader = await getTrader();
+  let response = trader.isLoggedIn();
+  if (response != null) {
     res.send({
       status: 'success',
       loggedin: true
@@ -132,68 +114,4 @@ router.get('/zerodha/isloggedin', function (req, res, next) {
   }
 })
 
-router.post('/zerodha/bo', function(req, res, next){
-  if(z != null){
-    let data = req.body;
-    let {
-      tradingsymbol,
-      transaction_type,
-      quantity,
-      squareoff,
-      stoploss,
-      price
-    } = data
-    response = z.placeBO(tradingsymbol, transaction_type, quantity, squareoff, stoploss, price)
-    console.log(response)
-    res.send({
-      status: 'success',
-      data: {
-        z_res: response
-      }
-    })
-  }else{
-    res.send({
-      status: 'error',
-      error: 'Zerodha not yet logged in'
-    })
-  }
-}) 
-
-router.get('/start_websocket', function(req, res, next){
-  express.init_ws();
-  next();
-})
-
 module.exports = router;
-
-//checking autologin
-async function z_login(userid, password, pin){
-  zt = new Zerodha(userid, password, pin)
-  await zt.connect();
-  // await zt.onScriptsLoaded(true);
-  response = await zt.login(); //login
-  let {
-    user_id,
-    request_id
-  } = response.data;
-  response = await zt.tfa(user_id, request_id); //two factor authentication
-  z = zt;
-  express.zt = zt
-}
-
-Property.findOne({
-  key: 'autoLogin'
-}, function (err, d) {
-  express.init_ws();
-  if (d.value == "true") {
-    User.findOne({master: true}, async function(err, d){
-      try{
-        await z_login(d.userId, d.password, d.pin)
-        express.ws_write(d.userId, null, "loggedIn")
-      }catch(ex){
-        console.error("Network Connection Error")
-        express.ws_write("", "Network Connection Error")
-      }
-    })
-  }
-})

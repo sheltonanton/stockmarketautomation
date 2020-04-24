@@ -1,4 +1,5 @@
 const express = require('express');
+const event = require('./events');
 const router = express.Router();
 const Stock = require('../models/stock')
 const Entry = require('../models/entry')
@@ -19,10 +20,12 @@ router.get('/:pathParam', function (req, res, next) {
     var param = req.params['pathParam']
     var stocks = {}
     if (param == 'active') {
-        Entry.find({}).populate('stock').exec(function (err, d) {
+        Entry.find({}).populate('stocks').exec(function (err, d) {
             if (err) throw new Error(err)
             for (var a of d) {
-                stocks[a['stock']['name']] = a['stock']['token'] //populating with the stocks to be subsribed for live data feed
+                for(var b of a['stocks']){
+                    stocks[b['name']] = b['token'] //populating with the stocks to be subsribed for live data feed
+                }
             }
             s = []
             for (var name in stocks) {
@@ -58,7 +61,7 @@ router.post('/', function (req, res, next) {
         }
         Stock.create(data).then(function (d, err) {
             if (err) throw new Error(err)
-            express.ws_write("Saved stock: " + data.name)
+            event.notifications.push("Saved stock: " + data.name)
             res.send({
                 status: "success",
                 data: d
@@ -79,7 +82,7 @@ router.delete('/', function (req, res, next) {
             name: params['name']
         }, function (err, d) {
             if (err) throw new Error(err)
-            express.ws_write("", "Deleted stock: " + params['name'])
+            event.notifications.push("", "Deleted stock: " + params['name'])
             res.send({
                 stocks: d,
                 status: 'success'

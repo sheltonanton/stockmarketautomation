@@ -1,4 +1,5 @@
 const express = require('express');
+const event = require('./events');
 const router = express.Router();
 const Strategy = require('../models/strategy');
 
@@ -23,7 +24,7 @@ router.get('/:id', function(req, res, next){
 router.post('/', function(req, res, next){
     let data = req.body.strategy;
     Strategy.create(data).then((r,err) => {
-        express.ws_write('SAVED STRATEGY: '+ data.name)
+        event.notifications.push('SAVED STRATEGY: '+ data.name)
         if(!err){
             res.send({
                 strategy: r
@@ -37,7 +38,7 @@ router.delete('/:id', function(req, res, next){
     let params = req.params;
     let id = params['id']
     Strategy.deleteOne({_id:id}, function(err, d){
-        express.ws_write('', 'DELETED STRATEGY: ' + params['name'])
+        event.notifications.push('', 'DELETED STRATEGY: ' + params['name'])
         if (!err) {
             res.send({
                 strategy: {
@@ -53,7 +54,7 @@ router.put('/:id', function(req, res, next){
     let id = req.params['id']
     let data = req.body.strategy;
     Strategy.updateOne({_id: id}, data, function(err,d){
-        express.ws_write('UPDATED STRATEGY: ' + data['name'])
+        event.notifications.push('UPDATED STRATEGY: ' + data['name'])
         res_send(res, err, {strategy: d})
     })
 })

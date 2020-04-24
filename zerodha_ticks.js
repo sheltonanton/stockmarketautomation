@@ -415,12 +415,12 @@ async function startSocket(callbacks){
 }
 
 function subscribe(callbacks, ws, ids, auth) {
-    ids.forEach(async function(id){
-        //get 1 minute historical data from all the stocks for the past 50 days
-        //change the data format and send it accordingly
-        let historical = await fetchHistoricalData(id, auth);
-        callbacks.onmessage(historical);
-    })
+    // ids.forEach(async function(id){
+    //     //get 1 minute historical data from all the stocks for the past 50 days
+    //     //change the data format and send it accordingly
+    //     let historical = await fetchHistoricalData(id, auth);
+    //     callbacks.onmessage(historical);
+    // })
     ws.send(JSON.stringify({
         a: "subscribe",
         v: ids
@@ -433,6 +433,7 @@ async function fetchHistoricalData(id, auth) {
     var quotes = [];
     for (var i=0; i<1; i++) {
         try{
+            debugger;
             var quote = await window.fetch(`https://kite.zerodha.com/oms/instruments/historical/${id}/minute?user_id=IV8690&oi=1&from=${from.yyyymmdd()}&to=${to.yyyymmdd()}`, {
                 "headers": {
                     "authorization": auth,
@@ -445,14 +446,13 @@ async function fetchHistoricalData(id, auth) {
                 "referrer": "https://kite.zerodha.com/static/build/chart.html?v=2.4.0",
                 "referrerPolicy": "no-referrer-when-downgrade",
                 "body": null,
-                "method": "GET",
-                "mode": "cors"
+                "method": "GET"
             });
             to = new Date(from - (24 * 60 * 60 * 1000));
             from = new Date(to - (21 * 24 * 60 * 60 * 1000));
             quotes = quote.data.candles.concat(quotes);
         }catch(e){
-            console.log(e);
+            debugger;
         }
     }
     quotes = quotes.map(quote => {

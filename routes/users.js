@@ -1,4 +1,5 @@
 const express = require('express');
+const event = require('./events');
 const router = express.Router();
 const User = require('../models/user')
 
@@ -23,7 +24,7 @@ router.get('/:userId', function(req, res, next){
 router.post('/', function(req, res, next){
   let data = req.body;
   User.create(data.user).then((r,err) => {
-    express.ws_write('SAVED USER: '+data.user.userId)
+    event.notifications.push('SAVED USER: '+data.user.userId)
     res_send(res, err, r)
   })
 })
@@ -33,7 +34,7 @@ router.delete('/:userId', function(req, res, next){
   let params = req.params;
   let userId = params['userId']
   User.deleteOne({userId}, function(err, d){
-    express.ws_write("",'DELETED USER: ' + userId)
+    event.notifications.push("",'DELETED USER: ' + userId)
     res_send(res, err, d)
   })
 })
@@ -42,7 +43,7 @@ router.delete('/:userId', function(req, res, next){
 router.put('/', function(req, res, next){
   let data = req.body.user;
   User.updateOne({userId: data.userId}, data, function(err, d){
-    express.ws_write('UPDATED USER: ' + data.userId)
+    event.notifications.push('UPDATED USER: ' + data.userId)
     res_send(res, err,d)
   })
 })
@@ -53,7 +54,9 @@ router.put('/master/:userId', function(req, res, next){
   let userId = params.userId;
   User.updateOne({master: true}, {$set: {master: false}}, function(err, d){
     User.updateOne({userId}, {$set: {master: true}}, function(err, d){
-      express.ws_write('UPDATED MASTER: ' + userId);
+      event.notifications.push('UPDATED MASTER: ' + userId);
+      //swap master and previous master
+
       res_send(res, err, d);
     })
     err && res_send(res, err, d)
