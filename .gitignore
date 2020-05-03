@@ -14,3 +14,5 @@ report.log
 file.log
 backtest_report.log
 config.txt
+nohup_node.output
+nohup_python.output
