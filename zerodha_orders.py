@@ -38,7 +38,7 @@ q1 = q2 = None
 sm = tm = ssm = stm = sdm = None
 q1 = Queue()
 
-dataFeed = DataFeed(save=True, filepath='output')
+dataFeed = DataFeed(save=False, filepath='output')
 
 instruments = pd.read_csv("instruments.csv")
 history = History(url=urls['get_history_kite'], instruments=instruments)
