@@ -22,7 +22,7 @@ from flask import Flask, request
 from flask_restful import Resource, Api
 import matplotlib.pyplot as plt
 
-sys.path.append("D:\\programs\\nseTools\\zerodha\\lib")
+sys.path.append("lib")
 from autotrade import History, Collector
 from manager import TradeManager,DateManager
 from data_feed import DataFeed
@@ -38,9 +38,9 @@ q1 = q2 = None
 sm = tm = ssm = stm = sdm = None
 q1 = Queue()
 
-dataFeed = DataFeed(save=True, filepath='D:\\programs\\nseTools\\zerodha\\output')
+dataFeed = DataFeed(save=True, filepath='output')
 
-instruments = pd.read_csv("D:\\programs\\nseTools\\zerodha\\instruments.csv")
+instruments = pd.read_csv("instruments.csv")
 history = History(url=urls['get_history_kite'], instruments=instruments)
 dataManager = DataManager(history)
 dataFeed.attach(dataManager)
