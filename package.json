@@ -15,10 +15,13 @@
     "express-ws": "^4.0.0",
     "http-errors": "~1.6.3",
     "jade": "~1.11.0",
-    "jsdom": "^15.1.1",
-    "mongoose": "^5.7.3",
+    "jsdom": "^15.2.0",
+    "line-reader": "^0.4.0",
+    "mongoose": "^5.7.5",
     "morgan": "~1.9.1",
     "node-scheduler": "^1.0.0",
-    "pug": "^2.0.4"
+    "pug": "^2.0.4",
+    "sass": "^1.23.7",
+    "selenium-webdriver": "^4.0.0-alpha.5"
   }
 }

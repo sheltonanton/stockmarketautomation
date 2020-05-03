@@ -5,10 +5,12 @@ mixin automation(data)
         .automation-buttons
             .flex-column
                 button.automation-button(disabled=automation_flag, onclick='auto_start_process()') Start Process
+                button.automation-button(disabled=automation_flag, onclick="auto_simulate('automation-input')") Simulate
                 button.automation-button(disabled=automation_flag, onclick="auto_subscribe('automation-input')") Subscribe
+                button.automation-button(disabled=automation_flag, onclick="auto_backtest('automation-input')") BackTest
                 button.automation-button(disabled=automation_flag, onclick='auto_stop_process()') Stop Process
                 button.automation-button(disabled=automation_flag, onclick='auto_force_stop()') Force Stop
-        .flex-column
+        .flex-column(style={width: '100%'})
             .automation-display(id="automation-display" style={'height':'196px'})
             input.automation-input(type="text" id="automation-input" style={'height':'27px'})
 
@@ -19,6 +21,10 @@ mixin user_manager()
     script(type="text/javascript") window.addEventListener('load',function(){ms_showUsers('ms_showUsers');});
     #ms_addUser(class=['ms_addUser'], style={display: 'none'})
         +form('ms_form_addUser', addUser, 'ms_addUser(ms_form_addUser)')
+
+mixin backtest_manager(id)
+    button(onclick='bt_refreshView("bt_view")') Ref
+    div(id=id class=['bt_view'])
 
 mixin isloggedin()
     .flex-row

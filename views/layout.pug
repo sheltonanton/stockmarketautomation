@@ -4,13 +4,19 @@ html
     title= title
     link(rel='stylesheet', href='/stylesheets/style.css')
     link(rel='stylesheet', href='https://cdn.datatables.net/v/dt/dt-1.10.20/datatables.min.css')
+    link(rel='stylesheet', href='/ember/ember.css')
+    meta(name="client/config/environment" content="%7B%22modulePrefix%22%3A%22client%22%2C%22environment%22%3A%22production%22%2C%22rootURL%22%3A%22%2F%22%2C%22locationType%22%3A%22hash%22%2C%22EmberENV%22%3A%7B%22FEATURES%22%3A%7B%7D%2C%22EXTEND_PROTOTYPES%22%3A%7B%22Date%22%3Afalse%7D%2C%22_JQUERY_INTEGRATION%22%3Afalse%7D%2C%22APP%22%3A%7B%22rootElement%22%3A%22%23ember-app%22%2C%22name%22%3A%22client%22%2C%22version%22%3A%220.0.0%2B821b1ca0%22%7D%2C%22exportApplicationGlobal%22%3Afalse%2C%22isModuleUnification%22%3Afalse%7D")
 
   body
     block content
     script(type="text/javascript" crossorigin="anonymous" src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=")
     script(type="text/javascript" crossorigin="anonymous" src="https://cdn.datatables.net/v/dt/dt-1.10.20/datatables.min.js")
+    //- script(type="text/javascript" src="https://kite.trade/publisher.js?v=3")
+    script(type="text/javascript" src="/ember/vendor-5536c6f2d6c10dc7780654d33a91ef3f.js" integrity="sha256-K00lRWOEJ/fyCJthJ6pPlmyQpo7xc2p4Z1n1eC/gdOg= sha512-2gGLxVSnlzfdWBVw1yDZg573250Em701QZTSvGVcDC8WG9XiSj9uwPA5hoYo8p9Ve5GYY8rGjuq4QUfdzLTHDw==" async=false defer=true)
+    script(type="text/javascript" src="/ember/client-df4de52221daff602605053b4c0ddae4.js" integrity="sha256-j8fJSXK1BTy5SyQBQWiaoBakaluC8FlT9sXV0pWi9Wo= sha512-Yo77nJIA42d5wB2Po44TFKOeb3lVcOA5YiDtQExRACY47pQH+AT1bpZ7X8yoIZCKNC92JItvI+vSTQ/qLxGGSQ==" async=false defer=true)
     script(type='text/javascript')
       block scripts
         |
         |
         include ../public/javascripts/utils.js
+        

@@ -1,9 +1,4 @@
-function start_process(){
-    
-}
-function stop_process(){
-
-}
+const event_url = "/events";
 
 async function login(){
     result = await send_api('/zerodha', 'post', {'Content-Type': 'application/json'}, JSON.stringify(parse_form(document.getElementById('login'))))
@@ -19,7 +14,6 @@ async function login(){
 async function isloggedin(){
     response = await send_api('/zerodha/isloggedin', 'get')
     change_status_loggedin(response.loggedin)
-    // setTimeout(isloggedin, 5000)
     return response
 }
 function change_status_loggedin(status){
@@ -77,6 +71,52 @@ function auto_start_streaming(){
 async function auto_start_process(){
     result = await send_api('/auto/start_automation', 'get')
 }
+
+async function auto_simulate(input) {
+    input = document.getElementById(input)
+    data = (input.value.includes('to'))? input.value.split(' to ') : input.value.split(',')
+    result = await send_json('/auto/simulate', 'post', JSON.stringify({
+        data: data
+    }))
+}
+
+async function auto_backtest(input) {
+    input = document.getElementById(input)
+    data = input.value.split(',')
+    result = await send_json('/auto/backtest', 'post', JSON.stringify({
+        data: data
+    }))
+    auto_backtest_display_result(result)
+}
+async function auto_backtest_display_result(result){
+    var display = document.getElementById('backtest_display')
+    var report = result.report;
+    for(var r of report){
+        var row = document.createElement('p');
+        row.innerHTML = `<div>${r.strategy}</div>`;
+        var content = document.createElement('ul');
+        var stocks = {}
+        for(var t of r.trades){
+            let diff = (t['exitPrice'] - t['entryPrice']) * ((t['type'] == 'buy')? 1: -1)
+            if(!stocks[t['stock']]) stocks[t['stock']] = {profit: 0, loss: 0}
+            if(diff > 0){
+                stocks[t['stock']].profit = stocks[t['stock']].profit + diff
+            }else{
+                stocks[t['stock']].loss = stocks[t['stock']].loss + diff
+            }
+        }
+        for(var s in stocks){
+            var li = document.createElement('li');
+            li.innerHTML = `
+                Stock: ${s}, Profit: ${stocks[s]['profit']}, Loss: ${stocks[s]['loss']}
+            `
+            content.appendChild(li);
+        }
+        row.appendChild(content);
+        display.appendChild(row);
+    }
+}
+
 async function auto_stop_process(){
     result = await send_api('/auto/stop_automation', 'get')
 }
@@ -89,32 +129,65 @@ async function auto_subscribe(input){
 }
 
 /* ORDER DATA */
-async function order_get_data(table){
-    data = await send_api('/order/bo','get')
+async function order_get_data(table, resDiv){
+    let data = await send_api('/order/bo','get')
     data = data['data']
-    columns = ['stock','type','quantity','entryTime','entryPrice']
-    columns = columns.map(column => {return {data: column,title: column}})
-    $(`#${table}`).DataTable({data,columns, paging: false,scrollY: 150})
+    let columns = ['stock','type','entryPrice','exitPrice','entryTime','exitTime']
+    columns = columns.map(column => {return {data: column, title: column}})
+    $.fn.dataTable.ext.errMode = 'none';
+    let total_profit = 0
+    let total_loss = 0
+    let invested = 0
+    let traded = 0
+    data.forEach(d => {
+        if(d['exitPrice']){
+            invested = invested + parseFloat(d['entryPrice']) * parseInt(d['quantity'])
+            traded = traded + (parseFloat(d['entryPrice']) + parseFloat(d['exitPrice'])) * parseInt(d['quantity'])
+            let diff = (parseFloat(d['exitPrice']) - parseFloat(d['entryPrice'])) * ((d['type'] == 'buy')? 1: -1)
+            let r = parseInt(d['quantity']) * diff
+            if(r < 0){total_loss+=r}else{total_profit+=r}
+        }
+        d['entryTime'] = new Date(parseInt(d['entryTime']+'000')).toTimeString().split(' GMT')[0]
+        d['exitTime'] = new Date(parseInt(d['exitTime']+'000')).toTimeString().split(' GMT')[0]
+    })
+    let net = total_profit + total_loss
+    let d = document.getElementById(resDiv)
+    d.innerHTML = `
+        <table style="width:75%;margin:60px auto;" cellpadding="3">
+            <tr><td>Total Profit</td><td>: ${total_profit.toFixed(2)}</td></tr>
+            <tr><td>Total Loss</td><td>: ${-total_loss.toFixed(2)}</td></tr>
+            <tr><td>Net</td><td>: ${net.toFixed(2)}</td></tr>
+            <tr><td>Inv. Amt</td><td>: ${invested.toFixed(0)}</td></tr>
+            <tr><td>Traded Amt</td><td>: ${traded.toFixed(0)}</td></tr>
+        </table>
+    `
+    $(`#${table}`).DataTable({data,columns, paging: false, scrollY: 150, autoWidth: true,
+        rowCallback: function (row, data, index) {
+            result = (data['exitPrice'] - data['entryPrice']) * ((data['type']=="buy")? 1:-1)
+            $(row).css({'background-color':(result >0)? '#caf8d6': '#f5ced9'})
+        }
+    })
+
 }
 
 /* OPEN RANGE BREAKOUT */
 async function save_orb_stocks(name){
     data = tokenFieldGetData(name);
-    result = await send_json('/orb/stocks', 'post', JSON.stringify({stocks: data}))
+    result = await send_json('/stocks', 'post', JSON.stringify({stocks: data}))
     //success
 }
 async function add_orb_stock(name){
-    result = await send_json('/orb/stocks', 'post', JSON.stringify({stock: name}))
+    result = await send_json('/stocks', 'post', JSON.stringify({stock: name}))
 }
 async function get_orb_stocks(){
-    result = await send_api('/orb/stocks', 'get')
+    result = await send_api('/stocks', 'get')
     args = result.stocks.map(r => {
         return [r.name, delete_orb_stock]
     })
     tokenFieldPopulate('orb', args)
 }
 async function delete_orb_stock(stock){
-    result = await send_api('/orb/stocks?name='+stock, 'delete')
+    result = await send_api('/stocks?name='+stock, 'delete')
 }
 
 /* USER MANAGER */
@@ -213,31 +286,31 @@ function funImageInit(){
 var store = {};
 
 (async function(){
-    var ws = new WebSocket('ws://localhost:3030') //TODO need to clarify for same port and some namespace
-    ws.onopen = async function(){
-        ws.send(await auto_start_streaming())
-    }
-    ws.onmessage = function(wsm){
-        let data = JSON.parse(wsm.data);
+    var source = new EventSource(event_url);
+    source.onmessage = function(event){
+        let data = event.data;
         switch(data.status){
             case "loggedIn": {
                 change_status_loggedin(true)
                 userId = data.message;
-                var d = document.getElementById('user-'+userId)
-                if(d){d.innerHTML = d.innerHTML + ' (L)'} else {store['logged_user'] = userId}
+                var d = document.getElementById('user-' + userId)
+                if (d) {
+                    d.innerHTML = d.innerHTML + ' (L)'
+                } else {
+                    store['logged_user'] = userId
+                }
                 data.message = "Logged in successfully"
-                data.status = "success"
+                data.status = "success";
+                break;
             }
-            case "error":
-            case "warning":
-            case "success": {
-                auto_write_display(data);
-            }
-            default: {
-
-            }
+            case 'warning':
+            case 'error':
+            case 'success':
+                {
+                    auto_write_display(data);
+                    break;
+                }
         }
     }
     setTimeout(isloggedin, 0)
-    await get_orb_stocks()
-}())
+}());

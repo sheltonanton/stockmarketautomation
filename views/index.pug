@@ -12,10 +12,11 @@ include components/card.pug
 include components/automation.pug
 
 block content
+  #ember-app
   +onloadstart("auto_start_streaming()")
   +cardcontainer('Dashboard')
 
-    +card('Log In', {width: '300px'})
+    +card('Log In', {width: '258px'})
       +form('login', login, 'login()')
       div(align="right")
         input(type="checkbox" name="auto_login" id="auto_login" onclick!="auto_set_autologin('auto_login')")
@@ -23,27 +24,36 @@ block content
       +onloadstart("auto_get_autologin('auto_login')")
       +isloggedin()
 
-    +card('Automation', {width: '632px'})
+    +card('Automation', {width: '556px'})
       +automation()
 
-    +card('Open Range Breakout', {width: '300px'})
-      +token_field('orb', 'add_orb_stock', 'delete_orb_stock')
-    +card('Master Client Multi-order (Zerodha)', {width: '300px', height: '270px'}, "*Double click to select the user as MASTER")
+    //- +card('Stocks in view', {width: '300px'})
+    //-   +token_field('orb', 'add_orb_stock', 'delete_orb_stock')
+    +card('Master Client Multi-order (Zerodha)', {width: '250px', height: '270px'}, "*Double click to select as MASTER")
       +user_manager()
-    +card('Alerts', {width: '300px', height: '270px'})
-      -
-        var style = {
-          overflow: 'hidden', 
-          width: '120px', 
-          height: '120px', 
-          position: "absolute",
-          right: "-120px", 
-          bottom: "0px"
-        }
+    //- +card('Alerts', {width: '300px', height: '270px'})
+    //-   -
+    //-     var style = {
+    //-       overflow: 'hidden', 
+    //-       width: '120px', 
+    //-       height: '120px', 
+    //-       position: "absolute",
+    //-       right: "-120px", 
+    //-       bottom: "0px"
+    //-     }
+
       //- .fun_image_wrapper(id="fun_image_wrapper", style=style)
       //-   div(style={['border-radius']: '120px', border: '1px solid #ddd',position: 'absolute', width: '70%', height: '70%', margin:'15%', ['z-index']: -9997})
       //-   img(src="/images/pokemon.png" id="fun_image" style={position: 'absolute', ['z-index']: 1, cursor: 'pointer'})
       //-   script(type="text/javascript") window.addEventListener('load', function(){funImageInit()})
-    +card('Open Range Breakout (Table)', {width: '966px', height: '270px'})
-      table#order_table
-      +onloadstart("order_get_data('order_table')") 
+
+      // these should be later created ***
+    //- +card('Order Table', {width: '656px', height: '270px'})
+    //-   .flex-row
+    //-     div.order_table
+    //-       table#order_table
+    //-     div.order_result(id='order_result')
+        //- +onloadstart("order_get_data('order_table','order_result')") 
+    
+    //- +card("Live Feed", {width: '900px', height: '270px'})
+    //-   #live_feed(style='height:90%;overflow-y:auto;')

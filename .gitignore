@@ -1,1 +1,14 @@
 node_modules/
+output/
+candles/
+key-pair/
+lib/__pycache__/
+__pycache__/
+client/node_modules/
+client/dist/
+public/historical_data/
+.vscode
+mongodump/
+report.log
+file.log
+backtest_report.log

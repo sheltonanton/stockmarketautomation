@@ -1,21 +1,23 @@
 const express = require('express');
+const event = require('./events');
+const {getMaster} = require('../zerodha_orders');
 var router = express.Router();
 
-const Stock = require('../models/stock')
 const Property = require('../models/property')
-const User = require('../models/user')
+// const Entry = require('../models/entry')
 
 const login = require('../views/data/forms/login')
 const addUser = require('../views/data/forms/addUser')
-
-const {Zerodha} = require('../zerodha_orders')
-var z = null
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', {
     login,addUser
   });
+});
+
+router.get('/backtest', function(req, res, next){
+  res.render('backtest', {})
 });
 
 router.get('/properties/:property', function(req, res, next){
@@ -76,7 +78,7 @@ router.put('/property', function(req, res, next){
   })
 })
 
-router.post('/zerodha', function(req, res, next) {
+router.post('/zerodha', async function(req, res, next) {
   (async function(){
     let {
       userid,
@@ -84,8 +86,10 @@ router.post('/zerodha', function(req, res, next) {
       pin = null
     } = req.body
     try{
-      z_login(userid, password, pin)
-      express.ws_write("Logged in successfully")
+      let trader = await getMaster();
+      let response = await trader.login(userid, password, pin);
+      console.log(response);
+      event.notifications.push("Logged in successfully")
       res.send({status: "success"})
     }catch(ex){
       console.log(ex);
@@ -94,8 +98,10 @@ router.post('/zerodha', function(req, res, next) {
   }())
 })
 
-router.get('/zerodha/isloggedin', function (req, res, next) {
-  if (z != null) {
+router.get('/zerodha/isloggedin', async function (req, res, next) {
+  let trader = await getMaster();
+  let response = trader.isLoggedIn();
+  if (response != null) {
     res.send({
       status: 'success',
       loggedin: true
@@ -108,100 +114,4 @@ router.get('/zerodha/isloggedin', function (req, res, next) {
   }
 })
 
-router.post('/zerodha/bo', function(req, res, next){
-  if(z != null){
-    let data = req.body;
-    let {
-      tradingsymbol,
-      transaction_type,
-      quantity,
-      squareoff,
-      stoploss,
-      price
-    } = data
-    response = z.placeBO(tradingsymbol, transaction_type, quantity, squareoff, stoploss, price)
-    console.log(response)
-    res.send({
-      status: 'success',
-      data: {
-        z_res: response
-      }
-    })
-  }else{
-    res.send({
-      status: 'error',
-      error: 'Zerodha not yet logged in'
-    })
-  }
-})
-
-router.post('/orb/stocks', function(req, res, next){
-  var data = req.body;
-  if(data.stock){
-    data = {
-      name: data.stock
-    }
-    Stock.create(data).then(function (d, err) {
-      if (err) throw new Error(err)
-      express.ws_write("Saved stock: "+ data.name)
-      res.send({
-        status: "success",
-        data: d
-      })
-    }) //saving stocks to Stock collection
-  }else if(data.stocks){
-    res.send({
-      status: "construction",
-      data
-    })
-  }
-})
-
-router.get('/orb/stocks', function(req, res, next){
-  Stock.find({}, function(err, d){
-    if(err) throw new Error(err)
-    res.send({stocks: d, status: 'success'});
-  })
-})
-router.delete('/orb/stocks', function(req, res, next){
-  let params = req.query;
-  if(params['name']){
-    Stock.deleteOne({name: params['name']}, function(err, d){
-      if(err) throw new Error(err)
-      express.ws_write("", "Deleted stock: "+params['name'])
-      res.send({stocks: d, status: 'success'})
-    })
-  }
-});
-
 module.exports = router;
-
-//checking autologin
-async function z_login(userid, password, pin){
-  zt = new Zerodha(userid, password, pin)
-  await zt.connect();
-  // await zt.onScriptsLoaded(true);
-  response = await zt.login(); //login
-  let {
-    user_id,
-    request_id
-  } = response.data;
-  response = await zt.tfa(user_id, request_id); //two factor authentication
-  z = zt;
-}
-
-Property.findOne({
-  key: 'autoLogin'
-}, function (err, d) {
-  if (d.value == "true") {
-    User.findOne({master: true}, async function(err, d){
-      try{
-        await z_login(d.userId, d.password, d.pin)
-        express.ws_write(d.userId, null, "loggedIn")
-      }catch(ex){
-        err = JSON.parse(ex.response)
-        express.ws_write("", err.message)
-      }
-    })
-  }
-})

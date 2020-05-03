@@ -4,7 +4,9 @@ const UserSchema = mongoose.Schema({
     userId: String,
     password: String,
     pin: String,
-    master: Boolean
+    master: Boolean,
+    group: Boolean,
+    active: Boolean
 })
 
 module.exports = mongoose.model('User', UserSchema);
