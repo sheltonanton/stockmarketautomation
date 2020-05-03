@@ -2,7 +2,7 @@ const express = require('express');
 const linereader = require('line-reader');
 
 const router = express.Router();
-const {getTrader, getUsers} = require('../zerodha_orders');
+const {getTraders} = require('../zerodha_orders');
 
 //need to create a middleware which handles the response and transfer the required data to the requester
 //create a singleton object and fetch it
@@ -31,22 +31,21 @@ router.delete('/bo/:order_id', async function (req, res, next) {
 router.post('/co', async function (req, res, next) {
     let data = req.body['co']
     if (data['original']) {
-        [master, traders] = await getUsers();
+        [master, traders] = await getTraders();
         var quantity = stocks_on_userid[master.user_id][data['stock']];
         response = await master.placeCO(data['stock'], data['type'], quantity, data['trigger_price'], data['price'])
         res.send(createResponse(response));
         if(response.status == 'success'){
+            console.log(response)
             orders[response.data.order_id] = [];
-            for (var trader in traders) {
-                console.log(trader.user_id);
+            for (var trader of traders) {
                 quantity = stocks_on_userid[trader.user_id][data['stock']];
-                res = await trader.placeCO(data['stock'], data['type'], data['type'], quantity, data['trigger_price'], data['price'])
+                res = await trader.placeCO(data['stock'], data['type'], quantity, data['trigger_price'], data['price'])
                 if (res.status == 'success') {
                     orders[response.data.order_id].push({
                         [trader.user_id]: res.data.order_id
                     });
                 }
-                console.log(res);
             }
         }
     }
@@ -56,19 +55,18 @@ router.post('/co', async function (req, res, next) {
 router.delete('/co/:order_id', async function (req, res, next) {
     let params = req.body
     if (params['original']) {
-        var [master, traders] = await getUsers();
+        var [master, traders] = await getTraders();
         var response = await master.deleteCO(params)
         res.send(createResponse(response));
         const master_order_id = params['order_id'];
         if (response.status == 'success' && orders[master_order_id]) {
             master_map = orders[master_order_id];
-            for (var trader in traders) {
+            for (var trader of traders) {
                 params['order_id'] = master_map[trader.user_id];
                 res = await trader.deleteCO(params)
                 if(res.status == 'success'){
                     delete master_map[trader.user_id];
                 }
-                console.log(res);
             }
         }
         delete orders[master_order_id];

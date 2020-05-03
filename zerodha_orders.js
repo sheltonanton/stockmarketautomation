@@ -8,7 +8,7 @@ const TFA = '/api/twofa'
 const BRACKET_ORDER = 'oms/orders/bo'
 const LIMIT_ORDER = 'oms/orders/regular'
 const COVER_ORDER = 'oms/orders/co'
-const PROFILE = 'user/profile'
+const PROFILE = 'oms/user/profile/full'
 
 const URL_ENCODED = { 'Content-Type': 'application/x-www-form-urlencoded' }
 const BO_JSON = {quantity:0, price:0, stoploss:0, trailing_stoploss:0, 
@@ -26,66 +26,6 @@ const CO_JSON = {quantity:0, price:0, stoploss:0, trailing_stoploss:0,
                   disclosed_quantity:0, trigger_price:0, squareoff:0, stoploss:0, trailing_stoploss:0,
                   variety: "co", user_id: ""}
 
-
-
-const store = (new(function Store() {
-  Store.prototype.set = async function(name, trader){
-    this[name] = trader;
-    await trader.connect();
-  }
-  Store.prototype.get = async function(name){
-    trader = this[name];
-    if(trader == null){
-      return null;
-    }
-    response = trader.isLoggedIn();
-    if(response == null){
-      await trader.login();
-    }
-    return trader;
-  }
-}));
-
-async function getMaster(){
-  let master = await store.get('master');
-  if(master == null){
-    let user = await User.findOne({
-      master: true
-    });
-    master = new Zerodha(user.userId, user.password, user.pin);
-    await store.set('master', master);
-  }
-  console.log("Getting auth from master: " + master.user_id);
-  return master;
-}
-getMaster()
-
-async function getTrader(user_id){
-  if(user_id == null){
-    return await getMaster();
-  }
-  let zerodha = await store.get(user_id);
-  if(zerodha == null){
-    let user = await User.findOne({userId: user_id});
-    zerodha = new Zerodha(user.userId, user.parssword, user.pin);
-    await store.set(user_id, zerodha);
-  }
-  return zerodha;
-}
-
-async function getUsers(){
-  let users = await User.find({});
-  let traders = []
-  let master = null;
-  for(var user of users){
-    if(!user.master){
-      traders.push(await getTrader(user.userId));
-    }else{
-      master = await getMaster();
-    }
-  }
-  return [master, traders];
-}
 
 function Zerodha(user_id, password, twofa_value){
     this.user_id = user_id
@@ -126,8 +66,7 @@ try{
 
     async function isLoggedIn(){
       if(!this.connected) return null;
-      var response = await this.fetch(PROFILE, {method: "GET", header:{authorization: this.getAuth(), ...URL_ENCODED}});
-      console.log(response);
+      var response = await this.fetch(PROFILE, {method: "GET", headers:{authorization: this.getAuth()}});
       if(response.status == 'success'){
         return response;
       }
@@ -181,6 +120,7 @@ try{
     async function deleteCO(params){
       try{
         response = await this.fetch(COVER_ORDER+'/'+params['order_id']+'?parent_order_id='+params['order_id']+'&variety='+params['variety'], {method: "DELETE", headers: {authorization: this.getAuth()}})
+        console.log(response);
         return response
       }catch(err){
         console.log(err)
@@ -190,6 +130,7 @@ try{
     async function deleteBO(params){
       try{
         response = await this.fetch(BRACKET_ORDER+'/'+params['order_id']+'?parent_order_id='+params['order_id']+'&variety='+params['variety'], {method: "DELETE", headers: {authorization: this.getAuth()}})
+        console.log(response);
         return response
       }catch(err){
         console.log(err)
@@ -342,16 +283,98 @@ try{
     Zerodha.prototype.getHistorical   = getHistorical
 }
 catch(ex){console.log(ex);}
+
+
 }());
 
+//initialise every user with Zerodha
+//store master
+//store users
+//while getting, try to find if it is still loggedin else run logging in
+//when new user is added, initialize and add it to the store
+//adding to the store automatically initializes the users
+//when master is changed, make a particular user as master
+
+const store = (new(function Store() {
+  this['traders'] = {};
+  this['master'] = null;
+  Store.prototype.set = async function (user) {
+    let zerodha = new Zerodha(user.userId, user.password, user.pin);
+    await zerodha.connect();
+    if (user.master) {
+      this['master'] = zerodha;
+      console.log(user.userId + " set as Master")
+    }
+    this['traders'][user.userId] = zerodha;
+  }
+  Store.prototype.get = async function (user_id) {
+    let trader = this['traders'][user_id];
+    response = trader.isLoggedIn(); //checking if the trader is loggedin
+    if (response == null) {
+      await trader.login();
+    }
+    return trader;
+  }
+  Store.prototype.switchMaster = async function (user_id) {
+    console.log("Switching master");
+    let trader = await this.get(user_id);
+    this['master'] = trader;
+  }
+  Store.prototype.getMaster = async function () {
+    await initializing_promise;
+    return await this.get(this['master'].user_id);
+  }
+}));
+
+var initializing_promise = (async function () {
+  //querying for all users and updating in store
+  let users = await User.find({});
+  for (var user of users) {
+    await store.set(user);
+  }
+}());
+initializing_promise.catch(function(e){
+  console.log("Check your internet connection");
+});
+
+async function getMaster() {
+  return await store.getMaster();
+}
+async function getTrader(user_id) {
+  return await store.get(user_id);
+}
+async function getTraders() {
+  let traders = []
+  let master = null;
+  for (var name in store['traders']) {
+    if (store['traders'][name] == store['master']) {
+      master = store['traders'][name];
+    } else {
+      traders.push(store['traders'][name]);
+    }
+  }
+  return [master, traders];
+}
+async function saveTrader(user){
+  await store.set(user);
+}
+async function saveMaster(user_id){
+  await store.switchMaster(user_id);
+}
+/** EXPORTING THE MODULE FUNCTIONS */
+
 module.exports = {
+  getMaster,
   getTrader,
-  getUsers
+  getTraders,
+  saveTrader,
+  saveMaster
 }
 
 //getStatus - finding the connection status for every HEARTBEAT time
 //reconnect - reconnect if not connected, do that while placing the order and for every HEARTBEAT time
 
+//polyfill
 Date.prototype.yyyymmdd = function () {
   var mm = this.getMonth() + 1; // getMonth() is zero-based
   var dd = this.getDate();

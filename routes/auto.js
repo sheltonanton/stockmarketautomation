@@ -6,7 +6,7 @@ const router = express.Router();
 const Entry = require('../models/entry');
 const MinHeap = require('../public/javascripts/utils/minheap');
 const {
-    getTrader
+    getMaster
 } = require('../zerodha_orders');
 
 var pyscript = null;
@@ -56,7 +56,7 @@ router.get('/start_automation', async function(req, res, next){
             token: stocks[s]
         }
     })
-    let trader = await getTrader();
+    let trader = await getMaster();
     data = {
         strategies: s,
         stocks,
@@ -102,7 +102,7 @@ router.post('/simulate', async function(req, res, next){
             token: stocks[s]
         }
     })
-    let trader = await getTrader();
+    let trader = await getMaster();
     data = {
         strategies: s,
         stocks,
@@ -174,7 +174,7 @@ router.get('/get_historical', async function(req, res, next){
     var fromDate = req.query['from'];
     var toDate = req.query['to'];
     console.log(instrument_token, fromDate, toDate);
-    let trader = await getTrader();
+    let trader = await getMaster();
     response = await trader.getHistorical(instrument_token, fromDate, toDate);
     return res.send(response);
 })
@@ -195,7 +195,7 @@ router.get('/stream_historical', async function(req, res, next){
     //construct min-heap of size instrument_tokens_length
     var history = [];
     var tokens = [];
-    let trader = await getTrader();
+    let trader = await getMaster();
     for(var token of instrument_tokens){
         response = await trader.getHistorical(token, fromDate, toDate);
         if(response.status == 'success'){
@@ -284,7 +284,7 @@ router.get('/start_process', async function(req, res, next){
     pyscript = {
         process_data
     }
-    trader = await getTrader();
+    trader = await getMaster();
     auth = trader.getAuth();
     res.send(auth)
 })

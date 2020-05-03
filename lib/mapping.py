@@ -24,7 +24,9 @@ operands = {
     'stochrsi': 'StochasticRelativeStrengthIndex',
     'max': 'Max',
     'min': 'Min',
-    'percent': 'Percent'
+    'percent': 'Percent',
+    'dayshigh': 'DaysHigh',
+    'dayslow': 'DaysLow'
 }
 
 traders = {

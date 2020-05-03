@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 import datetime as dt
 import logging
 
+from proxy_requests.proxy_requests import ProxyRequests
+
 logger = logging.getLogger('flowLogger')
 
 class History:
@@ -16,11 +18,12 @@ class History:
         History class is used to obtain historical data of candles for a time range and period
         Also used to get the instrument token if necessary
     """
-    def __init__(self, csv=None, url=None, instruments=None):
+    def __init__(self, csv=None, url=None, instruments=None, auth=''):
         #load the instruments
         self.instruments = instruments
         self.csv = csv
         self.url = url
+        self.auth = auth
         
     def get_instrument_token(self, symbol, exchange, instrument_type):
         self.instruments = self.instruments[self.instruments['instrument_type']==instrument_type]
@@ -29,10 +32,10 @@ class History:
         return instrument_token
     
     def get_data(self, instrument_token, time_type, from_time, to_time):
-        data = self.get_raw_data(instrument_token, time_type, from_time, to_time, "")
+        data = self.get_raw_data(instrument_token, time_type, from_time, to_time)
         return pd.DataFrame(data, columns=['t','o','h','l','c','v'])
 
-    def get_raw_data(self, instrument_token, time_type, from_time, to_time, auth):
+    def get_raw_data(self, instrument_token, time_type, from_time, to_time):
         #todo add a cache layer to handle already asked requests or read from a file if downloaded
         from_time = type(from_time) == datetime and from_time or datetime.strptime(from_time, '%Y-%m-%d')
         to_time = type(to_time) == datetime and to_time or datetime.strptime(to_time, '%Y-%m-%d')
@@ -49,12 +52,14 @@ class History:
             from_time = next_time + timedelta(days=1)
             headers = {
                 "X-Kite-Version": "3",
-                "Authorization": auth
+                "Authorization": self.auth
             }
             response = requests.get(url, headers=headers)
-            response = response.content.decode('utf-8')
-
-            data = json.loads(response)
+            data = json.loads(response.content.decode('utf-8'))
+            while(data['status'] == 'error'):
+                time.sleep(1)
+                response = requests.get(url, headers=headers)
+                data = json.loads(response.content.decode('utf-8'))
             data = data['data']['candles']
             candles.extend(data)
             if(from_time > to_time):

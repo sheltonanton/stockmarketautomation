@@ -7,7 +7,8 @@ var mongoose = require('mongoose');
 
 //connecting database
 mongoose.connect('mongodb://localhost/stock_auto', {
-  userNewUrlParser: true //need to clarify
+  useNewUrlParser: true, //need to clarify
+  useUnifiedTopology: true
 })
 var db = mongoose.connection;
 db.on('error', function(){

@@ -20,13 +20,14 @@ class TradeManager(Observer):
     '''
     #TODO check for simulation or not before executing orders and execute it accordingly
 
-    def __init__(self, inputPipe=None, config={}, simulation=False):
+    def __init__(self, inputPipe=None, config={}, simulation=False, dataManager=None):
         self.traders = []
         self.config = config
         self.input = inputPipe
         self.simulation = simulation
         self.zero = Operand(d=0)
         self.one = Operand(d=1)
+        self.dataManager = dataManager
         self.initialize()
 
     def initialize(self):
@@ -87,8 +88,6 @@ class TradeManager(Observer):
                                     price = self.round_off(price)
                                     quantity = int(quantity)
                                     r = None
-                                    logger.info("Trade parameter: {}".format(data['name']))
-                                    logger.info("Price: {}, target: {}, stoploss: {}, quantity: {}".format(price, target, stoploss, quantity))
                                     # logger.info(trade['stoploss'])
                                     # logger.info(trade['target'])
                                     if(target == 0):
@@ -97,7 +96,7 @@ class TradeManager(Observer):
                                             'type') or 'buy', price=price, stoploss=stoploss, quantity=quantity, params=d)
                                     else:
                                         r = trade['trader'].trade(s, data.get('type') or 'buy', price, target, stoploss, quantity, params=d)
-                                    if r:
+                                    if r and data.get('counter') is not None:
                                         self.counters[data['counter']+"_"+data['token']].append({
                                             'trader': trade['trader'],
                                             'args': [r['variety'], r['order_id']]
@@ -152,7 +151,7 @@ class TradeManager(Observer):
     def get_operation(self, arg):
         if(type(arg) is str):
             #it is an operation
-            operation = create_operation(data=json.loads(arg))
+            operation = create_operation(data=json.loads(arg), dataline=self.dataManager)
             return operation
         elif(type(arg) is float or type(arg) is int):
             #return the integer or float as it is

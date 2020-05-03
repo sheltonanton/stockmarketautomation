@@ -63,19 +63,6 @@ class DataFeed(Subject):
         thread.start()
         return thread
 
-    def automate(self, tokens=[], history=None, auth=None, callback = None):
-        queue = Queue()
-        p = Process(target=self.start_automation, args=(tokens, history, auth, queue), daemon=False)
-        p.start()
-        while(True):
-            try:
-                msg = queue.get(block=True)
-                print(msg)
-                self.notify(msg)
-            except Exception as e:
-                print(e)
-        return queue
-
     def start_simulation(self, start_time=None, end_time=None, real_time=False, callback=None):
         global no_save
         no_save = True
@@ -120,6 +107,8 @@ class DataFeed(Subject):
     def start_backtest(self, data=[], callback=None):
         if(len(data) < 2):
             print("Need FromDate and ToDate")
+            callback and callback()
+            return
         params = {
             'instrument_tokens[]': data[2],
             'from': data[0],
@@ -129,54 +118,16 @@ class DataFeed(Subject):
         for line in stream.iter_lines():
             tick = dict()
             tick['time'], tick['open'], tick['high'], tick['low'], tick['close'], tick['volume'], tick['token'], tick['interval'] = json.loads(line.decode('utf-8'))
-            tick['sm'] = False
-            tick['isCandle'] = True
             tick['time'] = int(datetime.strptime(tick['time'],'%Y-%m-%dT%H:%M:%S+0530').timestamp())
-            self.notify(tick)
+
+            t = {'lastPrice': tick['open'], 'time': tick['time'], 'token': tick['token'], 'sm': True}
+            self.notify(t)
+            t = {'lastPrice': tick['high'], 'time': tick['time'], 'token': tick['token'], 'sm': True}
+            self.notify(t)
+            t = {'lastPrice': tick['low'], 'time': tick['time'], 'token': tick['token'], 'sm': True}
+            self.notify(t)
         if callback:
             callback()
-
-    def start_automation(self, tokens, history, auth, queue, callback=None):
-        kws = KiteTicker("kitefront", "wPXXjA5tJE8KJyWN753rbGnf5lXlzU0Q")
-        self.load_history(tokens, history, auth)
-        kws.socket_url = "wss://ws.zerodha.com/?api_key=kitefront&user_id=MK4445&public_token=wPXXjA5tJE8KJyWN753rbGnf5lXlzU0Q&uid=1587463057403&user-agent=kite3-web&version=2.4.0"
-        print("Started separate process for data feed")
-        def on_ticks(ws, ticks):
-            for tick in ticks:
-                tick['lastPrice'] = tick['last_price']
-                tick['token'] = tick['instrument_token']
-                tick['time'] = int(datetime.now().timestamp())
-                queue.put(tick, block=False)
-
-        def on_connect(ws, response):
-            ws.subscribe(tokens)
-
-        def on_close(ws, code, reason):
-            ws.stop()
-            exit()
-
-        kws.on_ticks = on_ticks
-        kws.on_connect = on_connect
-        kws.on_close = on_close
-        kws.connect()
-
-    def load_history(self, tokens, history, auth):
-        fromTime = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d")
-        toTime = datetime.now()
-        for token in tokens:
-            print("Loading history for {}".format(token))
-            candles = history.get_raw_data(token, 1, fromTime, toTime, auth)
-            for candle in candles:
-                tick = dict()
-                candle[-1] = int(token)
-                candle.append(60)
-                tick['time'], tick['open'], tick['high'], tick['low'], tick['close'], tick['token'], tick['interval'] = candle
-                tick['sm'] = False
-                tick['isCandle'] = True
-                tick['noTrade'] = True
-                tick['time'] = int(datetime.strptime(
-                    tick['time'], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
-                self.notify(tick)
 
 class DataSaver(Observer):
     def __init__(self, filepath):

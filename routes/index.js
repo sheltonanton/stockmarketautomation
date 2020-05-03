@@ -1,6 +1,6 @@
 const express = require('express');
 const event = require('./events');
-const {getTrader} = require('../zerodha_orders');
+const {getMaster} = require('../zerodha_orders');
 var router = express.Router();
 
 const Property = require('../models/property')
@@ -86,7 +86,7 @@ router.post('/zerodha', async function(req, res, next) {
       pin = null
     } = req.body
     try{
-      let trader = await getTrader();
+      let trader = await getMaster();
       let response = await trader.login(userid, password, pin);
       console.log(response);
       event.notifications.push("Logged in successfully")
@@ -99,7 +99,7 @@ router.post('/zerodha', async function(req, res, next) {
 })
 
 router.get('/zerodha/isloggedin', async function (req, res, next) {
-  let trader = await getTrader();
+  let trader = await getMaster();
   let response = trader.isLoggedIn();
   if (response != null) {
     res.send({

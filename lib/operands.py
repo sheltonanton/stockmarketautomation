@@ -147,7 +147,7 @@ class Operation:
     def __init__(self,  operator=None, left_operand=None, right_operand=None, string=None):
         if(string is not None and type(string) is str):
             #parse the string and assign the respective operation
-            (self.left, self.operator, self.right) = create_operation(string=string)
+            (self.left, self.operator, self.right) = create_operation(string=string, dataline=None)
         else:
             self.left = left_operand
             self.right = right_operand
@@ -170,23 +170,25 @@ class Operation:
         else:
             return ("[{}]".format(self.l))
 
-def create_operation(string=None, data=None):
+def create_operation(string=None, data=None, dataline=None):
     if(data):
         x = data
         left = right = None
         if(type(x[0]) is list):
-            left = create_operation(data=x[0])
+            left = create_operation(data=x[0], dataline=dataline)
         elif(type(x[0]) is dict):
             l = globals()[operands[x[0]['func']]]
             args = x[0]['args'] if x[0]['args'] else []
             left = l(args=args)
+            left.dataline = dataline
             
         if(len(x) == 3 and type(x[2]) is list):
-            right = create_operation(data=x[2])
+            right = create_operation(data=x[2], dataline=dataline)
         elif(len(x) == 3 and type(x[2]) is dict):
             r = globals()[operands[x[2]['func']]]
             args = x[2]['args'] if x[2]['args'] else []
             right = r(args=args)
+            right.dataline = dataline
         operator = x[1] if(len(x) == 3) else None
         return Operation(left_operand=left, operator=operator, right_operand=right)
 
@@ -268,172 +270,96 @@ class Candle(Operand):
     '''[args] (timeperiod) '''
     def __init__(self, args=[]):
         Operand.__init__(self)
-        self.timeperiod = int(args[0]) or 1
-        self.dictKey = args[1]
-        self.prev = (len(args) > 2 and (int(args[2]) -1)) or -1
-        self.candles = Candles(timeperiod=self.timeperiod)
+        length = len(args)
+        self.timeperiod = length > 0 and int(args[0]) or 1
+        self.dictKey = length > 1 and args[1] or 'close'
+        self.prev = length > 2 and int(args[2]) or 0
+        self.dataline = None
+        self.candle = None
 
     def update(self, d):
-        try:
-            if(not d.get('isCandle')):
-                self.candles.add_price(d['lastPrice'], time=d['time'])
-                candle = self.candles.get_last_candles(count=abs(self.prev)+1)
-                output = candle[self.prev].get(self.dictKey) if len(candle) >= abs(self.prev) else 0
-                if(self.dictKey=='time'):
-                    if(not output):
-                        output = datetime.strptime("06:00","%H:%M").time()
-                self.setd(output)
-            else:
-                _open = d['open']
-                _close = d['close']
-                _high = d['high']
-                _low = d['low']
-                _interval = d['interval']
-                _time = d['time']
-                self.candles.add_price(_open, time = _time)
-                self.candles.add_price(_high, time = _time)
-                self.candles.add_price(_low, time = _time)
-                self.candles.add_price(_close, time = _time + _interval)
-                # if(self.prev < -1):
-                #     pdb.set_trace()
-                candle = self.candles.get_last_candles(count=abs(self.prev)+1)
-                output = candle[self.prev].get(self.dictKey) if len(candle) >= abs(self.prev) else 0
-                self.setd(output)
-        except Exception as e:
-            logger.exception(e)
+        self.last_price = d['lastPrice']
+        #get candle data with token, timeperiod, offset and count
+        candles = self.dataline.get_candles(d['token'], self.timeperiod, self.prev)
+        output = (len(candles) > 0) and candles[0][self.dictKey] or 0
+        if(self.dictKey == 'time'):
+            output = (len(candles) > 0) and int(candles[0]['time']) or int(d['time'])
+        self.setd(output)
+        self.candle = (len(candles) > 0) and candles[0] or None
         return self
-
-    def candle_formed(self, candle, t):
-        print(candle)
-        print(t)
 
     def __str__(self):
-        candle = self.candles.get_last_candles(count=abs(self.prev)+1)
-        if(len(candle) >= abs(self.prev)):
-            candle = candle[self.prev]
-            return "Candle({},{},{},{},{},{},{})".format(self.prev+1, self.dictKey, candle.get('open'), candle.get('high'), candle.get('low'), candle.get('close'), candle.get('time'))
+        if(self.candle is not None):
+            candle = self.candle
+            return "Candle({},{},{},{},{},{},{})".format(self.prev, self.dictKey, candle.get('open'), candle.get('high'), candle.get('low'), candle.get('close'), candle.get('time'))
         return "Candle({},{},{},{},{})".format(0,0,0,0,0)
 
-#make this async
-#for now loading the data on the rounded time
-history = None
-def get_history(timetype, fromtime, totime, instrument_token):
-    global history
-    if(history == None):
-        history = History(url=urls['history_url'], instruments=None)
-    data = history.get_raw_data(instrument_token, timetype, fromtime, totime)
-    candles = []
-    for d in data:
-        a = {}
-        a['time'],a['open'],a['high'],a['low'],a['close'],a['volume'] = d
-        a['time'] = datetime.strptime(a['time'],'%Y-%m-%dT%H:%M:%S+0530').timestamp()
-        candles.append(a)
-    return candles
 
-class HistorisedCandle(Candle):
-    def __init__(self, args=[]):
-        Candle.__init__(self, args)
-        self.candles.set_max_candles(max_candles=200)
-        self.candles_count = 0
-    
-    def update(self, d):
-        #started recording the data
-        #after rounding off, get the history data
-        #after obtaining the history data, find the end one and combine the recently collected data
-        #if not repeat the step
-        #temporary - calculating the next round time
-
-        # if not self.has_loaded and not self.needed:
-        #     current_time = datetime.fromtimestamp(int(d.get('time')))
-        #     start_time = datetime.combine(current_time.date(), dt.time(hour=9, minute=15))
-        #     timestamp = start_time.timestamp()
-        #     rem = (int(current_time.timestamp() - timestamp) % int(self.timeperiod * 60))
-        #     self.needed = int(current_time.timestamp() + (self.timeperiod * 60) - rem)
-
-        # if(self.needed and int(d.get('time')) >= int(self.needed-2) and not self.has_loaded):
-        #     self.has_loaded = True
-        #     self.get_history(d)
-        # if(self.has_loaded):
-        if(not d.get('lastPrice')):
-            d['lastPrice'] = d['price']
-        self.last_price = d['lastPrice']
-        Candle.update(self, d)
-        return self
-
-    def get_history(self, d):
-        tt = datetime.fromtimestamp(int(d.get('time')))
-        ft = (tt - timedelta(days=1))
-        totime = tt.strftime("%Y-%m-%d")
-        fromtime = ft.strftime("%Y-%m-%d")
-        candles = get_history(self.timeperiod, fromtime,totime, int(d.get('token')))
-        while(datetime.fromtimestamp(int(candles[-1].get('time'))) >= tt):
-            candles.pop()
-        self.candles.load_prev_candles(candles)
-        self.candles_count = self.candles.get_candles_count()
-
-    def is_new_candle_formed(self):
-        value = (self.candles.get_candles_count() > self.candles_count)
-        self.candles_count = self.candles.get_candles_count()
-        return value
-
-#loading previous data is the duty of the data feed
-#update is called for every tick
-#extending candle will give candle functionality
-#should change current and previous value, so that indication occurs
-
-
-class Max(HistorisedCandle):
+class Max(Candle):
     ''' Gives the maximum y of the x candles '''
 
     def __init__(self, args=[]):
-        HistorisedCandle.__init__(self, [args[0] or 1, args[1] or 'close', len(args) > 2 and args[2] or 0])
-        self.period = int(args[3]) or 20
+        Candle.__init__(self, args)
+        self.period = (len(args) > 3) and int(args[3]) or 20
 
     def update(self, data):
-        HistorisedCandle.update(self, data)
-        candles = self.candles.nd_last_candles(count=self.period , offset=self.prev+1)
-        #find the max [dictkey] of data or [period] candles
-        self.p = self.d
-        self.d = max(candles[self.dictKey] if len(candles[self.dictKey]) else [0])
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(data['token'], self.timeperiod, self.prev, count=self.period)
+        self.setd(max(candles[self.dictKey] if len(candles[self.dictKey]) else [0]))
         return self
 
     def __str__(self):
-        return "Max({}, {}, {}, {}) - {}".format(self.prev+1, self.timeperiod, self.dictKey, self.period, self.d)
+        return "Max({}, {}, {}, {}) - {}".format(self.prev, self.timeperiod, self.dictKey, self.period, self.d)
 
-class Min(HistorisedCandle):
+class Min(Candle):
     '''Gives the minimum y or the x candles '''
     
     def __init__(self, args=[]):
-        HistorisedCandle.__init__(self, [args[0] or 1, args[1] or 'close', len(args) > 2 and args[2] or 0])
-        self.period = int(args[3]) or 20
+        Candle.__init__(self, args)
+        self.period = (len(args) > 3) and int(args[3]) or 20
 
     def update(self, data):
-        HistorisedCandle.update(self, data)
-        candles = self.candles.nd_last_candles(count=self.period , offset=self.prev+1)
-        #find the max [dictkey] of data or [period] candles
-        self.p = self.d
-        self.d = min(candles[self.dictKey] if len(candles[self.dictKey]) else [0])
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(data['token'], self.timeperiod, self.prev, count=self.period)
+        self.setd(min(candles[self.dictKey] if len(candles[self.dictKey]) > 0 else [0]))
         return self
 
     def __str__(self):
         return "Min({}, {}, {}, {}) - {}".format(self.prev, self.timeperiod, self.dictKey, self.period, self.d)
 
-class DaysHigh(HistorisedCandle):
+class DaysHigh(Candle):
     '''Gives the days high '''
     def __init__(self, args=[]):
-        HistorisedCandle.__init__(self, [args[0] or 1, args[1] or 'close', 0])
+        if(len(args) > 1):
+            args = args[0:1] + ['high'] + args[1:]
+        Candle.__init__(self, args)
         
     def update(self, data):
-        HistorisedCandle.update(self, data)
-        # candles = self.candles.getDaysDetails()
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(
+            data['token'], self.timeperiod, self.prev, filter_str=self.dataline.DAYS_CANDLES)
+        self.setd(max(candles[self.dictKey] if len(candles['high']) > 0 else [0]))
         return self
-        
 
-class MovingAverageConvergenceDivergence(HistorisedCandle):
+class DaysLow(Candle):
+    '''Gives the days low '''
+    def __init__(self, args=[]):
+        if(len(args) > 1):
+            args = args[0:1] + ['low'] + args[1:]
+        Candle.__init__(self, args)
+
+    def update(self, data):
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(
+            data['token'], self.timeperiod, self.prev, filter_str=self.dataline.DAYS_CANLDES)
+        self.setd(min(candles[self.dictKey] if len(candles['low']) > 0 else [0]))
+        return self
+
+class MovingAverageConvergenceDivergence(Candle):
     '''[args] (fastperiod, slowperiod, signalperiod, output) '''
 
     def __init__(self, args=[]):
-        HistorisedCandle.__init__(self, [args[0], 'close'])
+        Candle.__init__(self, [args[0], 'close', 0])
         self.fastperiod = float(args[1]) or 12
         self.slowperiod = float(args[2]) or 26
         self.signalperiod = float(args[3]) or 9
@@ -444,234 +370,132 @@ class MovingAverageConvergenceDivergence(HistorisedCandle):
         # self.has_loaded = False
 
     def update(self, data):
-        d = self.d
-        HistorisedCandle.update(self, data)
-        if(self.is_new_candle_formed()):
-            data = self.candles.nd_last_candles(count=200)
-            r = None
-            try:
-                r = MACD(data['close'], self.fastperiod,
-                        self.slowperiod, self.signalperiod)
-            except:
-                r = {self.k : [0]}
-                print("Exception")
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(
+            data['token'], self.timeperiod, self.prev, count=200)
+        r = None
+        try:
+            r = MACD(np.array(candles['close']), self.fastperiod,
+                    self.slowperiod, self.signalperiod)
+        except:
+            r = {self.k : [0]}
+            print("Exception")
 
-            self.d = 0 if np.isnan(r[self.k][-1]) else r[self.k][-1]
-            if(len(r[self.k]) == 1):
-                self.p = 0
-            else:
-                self.p = 0 if np.isnan(r[self.k][-2]) else r[self.k][-2]
-        else:
-            self.d = 0 if not d else d
-            self.p = self.d
+        self.setd(0 if np.isnan(r[self.k][-1]) else r[self.k][-1])
         return self
 
     def __str__(self):
         operand = Operand.__str__(self)
-        return "MACD({},{},{},{}){} - data {}".format(self.fastperiod, self.slowperiod, self.signalperiod, self.output, operand, self.last_price)
+        return "MACD({},{},{},{}){} - data {}".format(self.fastperiod, self.slowperiod, self.signalperiod, self.output, operand, self.d)
 
 
-class ExponentialMovingAverage(HistorisedCandle):
+class ExponentialMovingAverage(Candle):
     def __init__(self, args=[]):
-        HistorisedCandle.__init__(self, [args[0], args[1]])
+        Candle.__init__(self, [args[0], 'close', 0])
         self.period = int(args[2]) or 20
     
     def update(self, data):
-        d = self.d
-        HistorisedCandle.update(self, data)
-        if(self.is_new_candle_formed()):
-            data = self.candles.nd_last_candles(count=200)
-            r = None
-            try:
-                r = EMA(data['close'], timeperiod=self.period)
-            except:
-                print("Exception in ExponentialMovingAverage")
-                r = [0,0]
-            #need to set self.d and self.p for calcualtion of crossover
-            self.d = 0 if np.isnan(r[-1]) else r[-1]
-            if(len(r) > 1):
-                self.p = 0 if np.isnan(r[-2]) else r[-2]
-            else:
-                self.p = 0
-        else:
-            self.d = 0 if not d else d
-            self.p = self.d
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(
+            data['token'], self.timeperiod, self.prev, count=200)
+        r = None
+        try:
+            r = EMA(np.array(candles['close']), timeperiod=self.period)
+        except:
+            print("Exception in ExponentialMovingAverage")
+            r = [0,0]
+        #need to set self.d and self.p for calcualtion of crossover
+        self.setd(0 if np.isnan(r[-1]) else r[-1])
         return self
 
     def __str__(self):
         operand = Operand.__str__(self)
-        return "EMA({},{}){} - data {}".format(self.timeperiod, self.period, operand, self.last_price)
+        return "EMA({},{}){} - data {}".format(self.timeperiod, self.period, operand, self.d)
 
 
-class SimpleMovingAverage(HistorisedCandle):
+class SimpleMovingAverage(Candle):
     def __init__(self, args=[]):
-        HistorisedCandle.__init__(self, [args[0], args[1]])
+        Candle.__init__(self, [args[0], 'close', 0])
         self.period = int(args[2]) or 20
 
     def update(self, data):
-        d = self.d
-        HistorisedCandle.update(self, data)
-        if(self.is_new_candle_formed()):
-            data = self.candles.nd_last_candles(count=300)
-            r = None
-            try:
-                r = SMA(data['close'], self.period)
-            except:
-                print("Exception in SimpleMovingAverage")
-                r = [0,0]
-            self.d = 0 if np.isnan(r[-1]) else r[-1]
-            if(len(r) > 1):
-                self.p = 0 if np.isnan(r[-2]) else r[-2]
-            else:
-                self.p = 0
-        else:
-            self.d = 0 if not d else d
-            self.p = self.d
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(
+            data['token'], self.timeperiod, self.prev, count=200)
+        r = None
+        try:
+            r = SMA(np.array(candles['close']), self.period)
+        except:
+            print("Exception in SimpleMovingAverage")
+            r = [0,0]
+        self.setd(0 if np.isnan(r[-1]) else r[-1])
         return self
 
     def __str__(self):
         operand = Operand.__str__(self)
-        return "SMA({},{}){} - data {}".format(self.timeperiod, self.period, operand, self.last_price)
+        return "SMA({},{}){} - data {}".format(self.timeperiod, self.period, operand, self.d)
 
-class BollingerBands(HistorisedCandle):
+class BollingerBands(Candle):
     def __init__(self, args=[]):
+        Candle.__init__(self, [args[0], 'close', 0])
         self.live = bool(int(args.pop())) or False
         self.output = str(args.pop()) or 'uband'
         self.period = int(args.pop()) or 20
         self.nbdevup = int(args.pop()) or 2
         self.nbdevdn = int(args.pop()) or 2
-        HistorisedCandle.__init__(self, args)
         self.keys = {'uband': 0, 'mband':1, 'lband': 2}
         self.matype = 0
         self.k = self.keys.get(self.output) or 0
 
     def update(self, data):
-        if(not self.live):
-            d = self.d
-            HistorisedCandle.update(self, data)
-            if self.is_new_candle_formed():
-                data = self.candles.nd_last_candles(count=200)
-                self.process_data(data)
-            else:
-                self.d = 0 if not d else d
-                self.p = self.d
-        else:
-            if data.get("isCandle"):
-                d = data['close']
-            else:
-                d = data['lastPrice']
-            d = {'close': np.append(self.candles.nd_last_candles(count=200)['close'], d)}
-            HistorisedCandle.update(self, data)
-            self.process_data(d)
-        return self
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(
+            data['token'], self.timeperiod, self.prev, count=200)
+        return self.process_data(candles)
 
     def process_data(self, data):
         r = None
         try:
-            r = BBANDS(data['close'], timeperiod=self.period, nbdevup=self.nbdevup, nbdevdn=self.nbdevdn, matype=self.matype)
+            r = BBANDS(np.array(data['close']), timeperiod=self.period, nbdevup=self.nbdevup, nbdevdn=self.nbdevdn, matype=self.matype)
         except Exception as e:
             print("Exception in BollingerBands", e)
             logger.exception(e)
             r = {self.k: [0,0]}
-        self.d = 0 if np.isnan(r[self.k][-1]) else r[self.k][-1]
-        if(len(r[self.k]) > 1):
-            self.p = 0 if np.isnan(r[self.k][-2]) else r[self.k][-2]
-        else:
-            self.p = 0
+        self.setd(0 if np.isnan(r[self.k][-1]) else r[self.k][-1])
         return self
 
     def __str__(self):
         operand = Operand.__str__(self)
-        return "BBANDS({},{},{},{}){} - data {}".format(self.period, self.nbdevup, self.nbdevdn, self.output, operand, self.last_price)
+        return "BBANDS({},{},{},{}){} - data {}".format(self.period, self.nbdevup, self.nbdevdn, self.output, operand, self.d)
 
-class StochasticRelativeStrengthIndex(HistorisedCandle):
+class StochasticRelativeStrengthIndex(Candle):
     def __init__(self, args=[]):
+        Candle.__init__(self, [args[0], 'close', 0])
         self.live = bool(int(args.pop())) or False
         self.output = str(args.pop()) or 'fastk'
         self.fastdperiod = int(args.pop()) or 3
         self.fastkperiod = int(args.pop()) or 5
         self.period = int(args.pop()) or 14
-        HistorisedCandle.__init__(self, args)
         self.keys = {'fastk': 0, 'fastd': 1}
         self.k = self.keys.get(self.output) or 0
         self.fastdmatype = 0
 
     def update(self, data):
-        if(not self.live):
-            d = self.d
-            HistorisedCandle.update(self, data)
-            if self.is_new_candle_formed():
-                data = self.candles.nd_last_candles(count=200)
-                self.process_data(data)
-            else:
-                self.d = 0 if not d else d
-                self.p = self.d
-        else:
-            if data.get("isCandle"):
-                d = data['close']
-            else:
-                d = data['lastPrice']
-            d = {'close': np.append(self.candles.nd_last_candles(count=200)['close'], d)}
-            HistorisedCandle.update(self, data)
-            self.process_data(d)
-        return self
+        Candle.update(self, data)
+        candles = self.dataline.get_nd_candles(
+            data['token'], self.timeperiod, self.prev, count=200)
+        return self.process_data(candles)
 
     def process_data(self, data):
         r = None
         try:
-            r = STOCHRSI(data['close'], timeperiod=self.period, fastk_period=self.fastkperiod, fastd_period=self.fastdperiod, fastd_matype=self.fastdmatype)
+            r = STOCHRSI(np.array(data['close']), timeperiod=self.period, fastk_period=self.fastkperiod, fastd_period=self.fastdperiod, fastd_matype=self.fastdmatype)
         except:
             bt_logger.exception()
             r = {self.k: [0,0]}
-        self.d = 0 if np.isnan(r[self.k][-1]) else r[self.k][-1]
-        if len(r[self.k]) > 1:
-            self.p = 0 if np.isnan(r[self.k][-2]) else r[self.k][-2]
-        else:
-            self.p = 0
-
-    def __str__(self):
-        operand = Operand.__str__(self)
-        return "STOCHASTICS({},{},{}){} - data {}".format(self.period, self.fastkperiod, self.fastdperiod, operand, self.last_price)
-
-class Maximum(HistorisedCandle):
-    def __init__(self, args=[]):
-        HistorisedCandle.__init__(self, args[0:3])
-        self.candle_period = args[0]
-        self.candle_part = args[1]
-        self.candle_position = args[2] or 0
-        self.max_period = int(args[3]) or 1
-        #load candle with previous data for slowperiod + signalperiod
-        self.has_loaded = False
-
-    def update(self, data):
-        try:
-            d = self.d
-            HistorisedCandle.update(self, data)
-            if(self.is_new_candle_formed()):
-                max_period = self.max_period
-                if(type(self.max_period) == str):
-                    max_period = self.get_candles_count_till(self.max_period, data['time'], self.candle_period)
-                    
-                data = self.candles.nd_last_candles(count=max_period + (abs(self.candle_position)))
-                maximum = data['high'][0]
-                for x in range(self.max_period+1):
-                    if(x > maximum):
-                        maximum = x
-                self.p = self.d
-                self.d = maximum
-        except Exception as e:
-            logger.exception(e)
+        self.setd(0 if np.isnan(r[self.k][-1]) else r[self.k][-1])
         return self
 
-    def get_candles_count_till(self, string, time, time_type):
-        t1 = datetime.datetime.strptime(string, "%H:%M").time()
-        t2 = datetime.datetime.fromtimestamp(time).time()
-        req = 0
-        minute = (t2.minute + (t2.hour * 60)) - (t1.minute + (t1.hour * 60))
-        minute = 0 if minute < 0 else minute
-        req = minute / int(time_type)
-        return req
-        
     def __str__(self):
         operand = Operand.__str__(self)
-        return "Maximum({},{},{},{}){} - data {}".format(self.candle_period, self.candle_part, self.candle_position, self.max_period, operand, self.last_price)
+        return "STOCHASTICS({},{},{}){} - data {}".format(self.period, self.fastkperiod, self.fastdperiod, operand, self.d)

@@ -17,10 +17,11 @@ class StrategyManager(Observer):
         Output of strategy manager gives the indication to the Main Trader
     '''
 
-    def __init__(self, outputPipe=None, config={}):
+    def __init__(self, outputPipe=None, dataManager=None, config={}):
         self.stocks = defaultdict(list)
         self.output = outputPipe
         self.count = 0
+        self.dataManager = dataManager
 
     def update(self, dataFeed:Subject):
         data = dataFeed.data
@@ -35,7 +36,7 @@ class StrategyManager(Observer):
                         if((output is not None) and r and r.d == True):
                             #send the result for the strategy, normally it will be indicators
                             #TODO should send what to do, buy or sell, too
-                            logger.info("Signal Generated: {} - {}".format(d['token'], strategy.name))
+                            # logger.info("Signal Generated: {} - {}".format(d['token'], strategy.name))
                             request = {
                                 'data': data
                             }
@@ -66,9 +67,9 @@ class StrategyManager(Observer):
         self.stocks[token].remove(strategy)
 
     def create_strategy(self, strategy):
-        operation = create_operation(data=json.loads(strategy['operation']))
-        bo = create_operation(data=json.loads(strategy['beginOn']))
-        eo = create_operation(data=json.loads(strategy['endOn']))
+        operation = create_operation(data=json.loads(strategy['operation']), dataline=self.dataManager)
+        bo = create_operation(data=json.loads(strategy['beginOn']), dataline=self.dataManager)
+        eo = create_operation(data=json.loads(strategy['endOn']), dataline=self.dataManager)
         strategy = Strategy(
             operation=operation,
             begin_on=bo,
@@ -134,5 +135,6 @@ class Strategy:
         if(self.operation):
             r = self.operation.update(data)
             if(r and r.d == True):
+                # pass
                 logger.info("{} {} - {} {}".format(datetime.fromtimestamp(int(data['time'])).strftime("%d-%m-%Y %H:%M"), data['token'], self.name, self.operation))
         return r

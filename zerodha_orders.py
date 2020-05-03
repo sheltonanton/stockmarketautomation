@@ -5,7 +5,7 @@ import logging.config
 logging.config.fileConfig(fname='logger.conf', disable_existing_loggers=False)
 
 import pdb
-import sys
+import sys, os, signal
 import time
 import json
 import pdb
@@ -26,26 +26,28 @@ sys.path.append("D:\\programs\\nseTools\\zerodha\\lib")
 from autotrade import History, Collector
 from manager import TradeManager,DateManager
 from pipe import WebSocketPipe
-from open_range_breakout import OpenRangeBreakout
 from data_feed import DataFeed
 from mapping import urls
 from strategy import StrategyManager
+from data_manager import DataManager
 
 logger = logging.getLogger('flowLogger')
 reportLogger = logging.getLogger('reportLogger')
 feedLogger = logging.getLogger('feedLogger')
+
 q1 = q2 = None
-sm = tm = ssm = stm = None
+sm = tm = ssm = stm = sdm = None
 q1 = Queue()
 
 dataFeed = DataFeed(save=True, filepath='D:\\programs\\nseTools\\zerodha\\output')
-process_args = ['C:\\Program Files\\nodejs\\node.exe', '--inspect=7000', 'D:\\programs\\nseTools\\zerodha\\zerodha_socket.js']
+
 instruments = pd.read_csv("D:\\programs\\nseTools\\zerodha\\instruments.csv")
 history = History(url=urls['get_history_kite'], instruments=instruments)
-
+dataManager = DataManager(history)
+dataFeed.attach(dataManager)
 #for live trade
-sm = StrategyManager(outputPipe=q1)
-tm = TradeManager(inputPipe=q1)
+sm = StrategyManager(outputPipe=q1, dataManager=dataManager)
+tm = TradeManager(inputPipe=q1, dataManager=dataManager)
 storage = {}
 
 #-----------------------------------------------------ALL PROCESS THREADS METHODS-----------------------------------------------------
@@ -97,41 +99,7 @@ def start_automation(data={}):
         'report': "nothing"
     }
 
-def simulation_callback():
-    global ssm
-    global stm
-    dataFeed.detach(ssm)
-    dataFeed.detach(stm)
-    stm.stop()
-
 def simulate_automation(data):
-    global ssm
-    global stm
-    print("Simulating Automation")
-    for datestring in data.get('dates'):
-        q2 = Queue()
-        #for simulation
-        ssm = StrategyManager(outputPipe=q2)
-        stm = TradeManager(inputPipe=q2, simulation=True)
-        #start the datafeed dummy transaction
-
-        ssm.load_strategies(strategies=data.get('strategies'))
-        trades = {}
-        pprint(data)
-        for s in data.get('strategies'):
-            if(s.get('trades')):
-                trades[s['_id']+"_"+s['token']] = s['trades']
-        stm.load_trades(trades=trades)
-        
-        dataFeed.attach(ssm, simulation=False)
-        dataFeed.attach(stm, simulation=False)
-
-        dataFeed.simulate(
-            start_time=datestring, 
-            end_time=datestring,
-            real_time=data.get('realTime'),
-            callback=simulation_callback).join() #realTime bool - for real lagging
-        print("Simulation Ended")
     return {
         'handler': 'simulate_automation',
         'status': 'success'
@@ -140,6 +108,7 @@ def simulate_automation(data):
 def backtest_callback():
     global ssm
     global stm
+    global sdm
     logger.info("End of dataFeed")
     logger.info("End of backtest")
     logger.info("Generating Report")
@@ -148,28 +117,47 @@ def backtest_callback():
     reportLogger.info("\n" + json.dumps(report))
     dataFeed.detach(ssm)
     dataFeed.detach(stm)
+    dataFeed.detach(sdm)
     stm.stop()
+    with open('backtest_report.log', 'w+') as f:
+        for r in report:
+            if(len(r['trades']) > 0):
+                f.write("===========================\n\n\n")
+                f.write(r['strategy'] + ' - ' + r['trades'][0]['stock'] + "\n\n")
+                f.write("===========================")
+                f.write("\n\n")
+            for order in r['trades']:
+                f.write(order['log'])
+                f.write('\n')
+                f.write('\n')
+    sdm.stop()
 
 def run_backtest(data):
     global ssm
     global stm
+    global sdm
     args = data.get('args')
     logger.info("Running backtest from {} to {} in {}".format(*args))
     
     q2 = Queue()
-    ssm = StrategyManager(outputPipe=q2)
-    stm = TradeManager(inputPipe=q2, simulation=True)
+    sdm = DataManager(history)
+    ssm = StrategyManager(outputPipe=q2, dataManager=sdm)
+    stm = TradeManager(inputPipe=q2, dataManager=sdm, simulation=True)
     ssm.load_strategies(strategies=data.get('strategies'))
     trades = {}
     for s in data.get('strategies'):
         if(s.get('trades')):
-            # s['trades'] = list(map(lambda x: x.update({'trader':'simulated', 'strategy': s['name']}) or x, s['trades']))
+            s['trades'] = list(map(lambda x: x.update({'trader':'simulated', 'strategy': s['name']}) or x, s['trades']))
             trades[s['_id']+"_"+s['token']] = s['trades'] #TODO need to generalize it for extending more
-    dataFeed.attach(ssm, simulation=False)
-    dataFeed.attach(stm, simulation=False)
+
+    dataFeed.attach(sdm, simulation=True)
+    dataFeed.attach(ssm, simulation=True)
+    dataFeed.attach(stm, simulation=True)
     logger.info("Attached to dataFeed; {}".format(ssm))
     logger.info("Attached to dataFeed; {}".format(stm))
+    logger.info("Attached to dataFeed; {}".format(sdm))
     stm.load_trades(trades=trades)
+    sdm.load_data([int(x) for x in args[2]], now=(datetime.strptime(args[0], "%Y-%m-%d") - timedelta(days=1)))
     dataFeed.backtest(
         data = args,
         callback = backtest_callback
@@ -227,6 +215,13 @@ def add_strategy(data):
         'status': 'success'
     }
 
+def stop_server(data):
+    os.kill(os.getpid(), signal.SIGINT)
+    return {
+        'handler': 'stop_server',
+        'status': 'success'
+    }
+
 handlers = {
     'get_instruments': get_instruments,
     'start_automation': start_automation,
@@ -236,7 +231,8 @@ handlers = {
     'send_automation_subscription': send_automation_subscription,
     'stop_automation': stop_automation,
     'force_stop': force_stop,
-    'start_ws_stream': start_ws_stream
+    'start_ws_stream': start_ws_stream,
+    'stop_server': stop_server
 }
 
 #------------------------------------------------- ALL UTILITY, STREAM READ AND STREAM WRITE FUNCTIONS ----------------------------------------------------
@@ -245,7 +241,6 @@ handlers = {
 def start_ticker(tokens, history, auth='', callback=None):
     kws = KiteTicker("kitefront", "wPXXjA5tJE8KJyWN753rbGnf5lXlzU0Q")
     kws.socket_url = "wss://ws.zerodha.com/?api_key=kitefront&user_id=MK4445&public_token=wPXXjA5tJE8KJyWN753rbGnf5lXlzU0Q&uid=1587463057403&user-agent=kite3-web&version=2.4.0"
-    print("Started separate process for data feed")
 
     def on_ticks(ws, ticks):
         for tick in ticks:
@@ -256,6 +251,7 @@ def start_ticker(tokens, history, auth='', callback=None):
             dataFeed.notify(tick)
 
     def on_connect(ws, response):
+        print("Subscribing to tokens: ", storage['tokens'])
         ws.subscribe(storage['tokens'])
 
     def on_close(ws, code, reason):
@@ -268,31 +264,13 @@ def start_ticker(tokens, history, auth='', callback=None):
         if(storage.get('continueMain')):
             break
         time.sleep(2)
-    load_history(storage['tokens'], history, auth)
-    print("WebSocket Connected")
+    dataManager.load_data(list(storage['tokens']))
+    print("History loaded")
+    print("WebSocket Connecting")
     kws.connect()
 
-def load_history(tokens, history, auth):
-    fromTime = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    toTime = datetime.now()
-    for token in tokens:
-        print("Loading history for {}".format(token))
-        candles = history.get_raw_data(token, 1, fromTime, toTime, auth)
-        for candle in candles:
-            tick = dict()
-            candle[-1] = int(token)
-            candle.append(60)
-            tick['time'], tick['open'], tick['high'], tick['low'], tick['close'], tick['token'], tick['interval'] = candle
-            tick['sm'] = False
-            tick['isCandle'] = True
-            tick['noTrade'] = True
-            tick['time'] = int(datetime.strptime(
-                tick['time'], '%Y-%m-%dT%H:%M:%S+0530').timestamp())
-            dataFeed.notify(tick)
-    print("History Loaded")
-
-
 def main(handlers):
+    global history
     app = Flask(__name__)
     api = Api(app)
 
@@ -301,14 +279,15 @@ def main(handlers):
             r = request.json['data']
             try:
                 return handlers[r['handler']](r['data'])
-            except:
-                print("Exception")
+            except Exception as e:
+                logger.exception(e)
 
     api.add_resource(Response, '/')
     auth = None
     while True:
         try:
             auth = requests.get(urls['start_process'])
+            history.auth = auth.content
             break
         except:
             print("Polling")
@@ -316,6 +295,7 @@ def main(handlers):
     thread = Thread(target=app_start, args=(app,))
     thread.start()
     start_ticker([], history, auth=auth.content)
+    requests.post('http://localhost:5000', json={'data': {'handler': 'stop_server','data': None}})
     thread.join()
 
 def app_start(app):
