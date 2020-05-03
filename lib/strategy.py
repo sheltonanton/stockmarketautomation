@@ -1,5 +1,4 @@
 from collections import defaultdict
-from multiprocessing.connection import PipeConnection
 from observer import Observer, Subject
 from operands import Operand, Operation, create_operation
 import pdb

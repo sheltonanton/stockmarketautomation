@@ -6,7 +6,7 @@ var logger = require('morgan');
 var mongoose = require('mongoose');
 
 //connecting database
-mongoose.connect('mongodb://localhost/stock_auto', {
+mongoose.connect('mongodb+srv://shelton:sherlton@cluster0-xr5nn.mongodb.net/stock_auto', {
   useNewUrlParser: true, //need to clarify
   useUnifiedTopology: true
 })

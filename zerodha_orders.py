@@ -285,6 +285,7 @@ def main(handlers):
     auth = None
     while True:
         try:
+            time.sleep(2)
             auth = requests.get(urls['start_process'])
             history.auth = auth.content
             break
