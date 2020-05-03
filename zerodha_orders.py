@@ -25,7 +25,6 @@ import matplotlib.pyplot as plt
 sys.path.append("D:\\programs\\nseTools\\zerodha\\lib")
 from autotrade import History, Collector
 from manager import TradeManager,DateManager
-from pipe import WebSocketPipe
 from data_feed import DataFeed
 from mapping import urls
 from strategy import StrategyManager

@@ -1,6 +1,6 @@
 from collections import defaultdict
 from multiprocessing.connection import PipeConnection
-from observer import Observer,Subject
+from observer import Observer, Subject
 from operands import Operand, Operation, create_operation
 import pdb
 import json
@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 
 logger = logging.getLogger('flowLogger')
 feedLogger = logging.getLogger('feedLogger')
+
+
 class StrategyManager(Observer):
     '''
         Input of strategy manager will be the data feed
@@ -23,12 +25,12 @@ class StrategyManager(Observer):
         self.count = 0
         self.dataManager = dataManager
 
-    def update(self, dataFeed:Subject):
+    def update(self, dataFeed: Subject):
         data = dataFeed.data
         output = self.output
         #delegate the data for a stock according to the respective strategies assigned
         for key in self.stocks:
-            d = data #TODO parse data and append it to d
+            d = data  # TODO parse data and append it to d
             if(int(key) == int(d['token'])):
                 for strategy in self.stocks[key]:
                     try:
@@ -45,10 +47,12 @@ class StrategyManager(Observer):
                             # logger.info("Pushed into queue: {} - {} {}".format(lt(data['time']), strategy.args['name'], json.dumps(data)))
                             self.count = self.count + 1
                     except Exception as e:
-                        print("Exception in Strategy {}".format(strategy.args['name']))
+                        print("Exception in Strategy {}".format(
+                            strategy.args['name']))
                         logger.exception(e)
                         logger.exception(strategy.operation)
-                        self.stocks[key].remove(strategy) #preventing the affected strategy from executing further
+                        # preventing the affected strategy from executing further
+                        self.stocks[key].remove(strategy)
 
     def load_strategies(self, strategies):
         self.stocks = defaultdict(list)
@@ -67,15 +71,19 @@ class StrategyManager(Observer):
         self.stocks[token].remove(strategy)
 
     def create_strategy(self, strategy):
-        operation = create_operation(data=json.loads(strategy['operation']), dataline=self.dataManager)
-        bo = create_operation(data=json.loads(strategy['beginOn']), dataline=self.dataManager)
-        eo = create_operation(data=json.loads(strategy['endOn']), dataline=self.dataManager)
+        operation = create_operation(data=json.loads(
+            strategy['operation']), dataline=self.dataManager)
+        bo = create_operation(data=json.loads(
+            strategy['beginOn']), dataline=self.dataManager)
+        eo = create_operation(data=json.loads(
+            strategy['endOn']), dataline=self.dataManager)
         strategy = Strategy(
             operation=operation,
             begin_on=bo,
             end_on=eo,
-            args = strategy,)
+            args=strategy,)
         return strategy
+
 
 class Strategy:
     def __init__(self, operation=None, begin_on=Operation(operator='none'), end_on=Operation(operator='none'), args={}, name=None):
@@ -95,14 +103,14 @@ class Strategy:
     def end(self, data):
         # print("E - {} - {}".format(data['token'], datetime.fromtimestamp(int(data.get('time'))).strftime("%d-%m-%Y %H:%M:%S")))
         return
-    
+
     #TODO replace the begin calling with the decorator
     def run(self, data):
         d = {
             'price': data['lastPrice'],
             'time': data['time'],
             'token': data['token'],
-            'lastPrice': data['lastPrice'] #TODO change to common as price
+            'lastPrice': data['lastPrice']  # TODO change to common as price
         }
         if(data.get('isCandle')):
             d.update({
@@ -136,5 +144,6 @@ class Strategy:
             r = self.operation.update(data)
             if(r and r.d == True):
                 # pass
-                logger.info("{} {} - {} {}".format(datetime.fromtimestamp(int(data['time'])).strftime("%d-%m-%Y %H:%M"), data['token'], self.name, self.operation))
+                logger.info("{} {} - {} {}".format(datetime.fromtimestamp(int(data['time'])).strftime(
+                    "%d-%m-%Y %H:%M"), data['token'], self.name, self.operation))
         return r
