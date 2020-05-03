@@ -8,6 +8,7 @@ const {saveTrader, saveMaster} = require('../zerodha_orders')
 router.get('/', function(req, res, next) {
   let query = req.query || {};
   User.find(query, function(err, d){
+    delete d['password'];
     res_send(res, err, {users: d})
   })
 });
