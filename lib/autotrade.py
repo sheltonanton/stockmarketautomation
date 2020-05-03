@@ -9,8 +9,6 @@ from datetime import datetime, timedelta
 import datetime as dt
 import logging
 
-from proxy_requests.proxy_requests import ProxyRequests
-
 logger = logging.getLogger('flowLogger')
 
 class History:
