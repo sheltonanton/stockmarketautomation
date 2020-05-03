@@ -4,15 +4,19 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var mongoose = require('mongoose');
+var fs = require('fs');
 
-//connecting database
-mongoose.connect('mongodb+srv://shelton:sherlton@cluster0-xr5nn.mongodb.net/stock_auto', {
-  useNewUrlParser: true, //need to clarify
-  useUnifiedTopology: true
-})
-var db = mongoose.connection;
-db.on('error', function(){
-  throw new Error("Error in connecting to mongodb database")
+fs.readFile('config.txt', 'utf-8', function(err, data){
+  var data = data.split("\r\n");
+  //connecting database
+  mongoose.connect(data[0], {
+    useNewUrlParser: true, //need to clarify
+    useUnifiedTopology: true
+  })
+  var db = mongoose.connection;
+  db.on('error', function () {
+    throw new Error("Error in connecting to mongodb database")
+  })
 })
 
 var app = express();
