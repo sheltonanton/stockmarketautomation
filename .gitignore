@@ -9,6 +9,7 @@ client/dist/
 public/historical_data/
 .vscode
 mongodump/
+ta-lib/
 report.log
 file.log
 backtest_report.log
