@@ -125,7 +125,7 @@ class DataManager(Observer):
                 'low': float(price),
                 'close': float(price)
             })
-            self.upload_to_csv(token, timeperiod, list_to_add)
+            # self.upload_to_csv(token, timeperiod, list_to_add)
         else:
             last_candle['high'] = max(last_candle['high'], float(price))
             last_candle['low'] = min(last_candle['low'], float(price))

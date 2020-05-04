@@ -16,13 +16,13 @@ block content
   +onloadstart("auto_start_streaming()")
   +cardcontainer('Dashboard')
 
-    +card('Log In', {width: '258px'})
-      +form('login', login, 'login()')
-      div(align="right")
-        input(type="checkbox" name="auto_login" id="auto_login" onclick!="auto_set_autologin('auto_login')")
-        label(for="auto_login" style={cursor: 'pointer'}) Auto Login
-      +onloadstart("auto_get_autologin('auto_login')")
-      +isloggedin()
+    //- +card('Log In', {width: '258px'})
+    //-   +form('login', login, 'login()')
+    //-   div(align="right")
+    //-     input(type="checkbox" name="auto_login" id="auto_login" onclick!="auto_set_autologin('auto_login')")
+    //-     label(for="auto_login" style={cursor: 'pointer'}) Auto Login
+    //-   +onloadstart("auto_get_autologin('auto_login')")
+    //-   +isloggedin()
 
     +card('Automation', {width: '556px'})
       +automation()

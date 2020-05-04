@@ -1,5 +1,4 @@
 
-from kiteconnect import KiteTicker
 import logging
 import logging.config
 logging.config.fileConfig(fname='logger.conf', disable_existing_loggers=False)
@@ -13,6 +12,7 @@ import pandas as pd
 import numpy as np
 import requests
 import schedule
+import matplotlib.pyplot as plt
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from multiprocessing import Process, Queue, Pipe
@@ -20,7 +20,7 @@ from threading import Thread, Lock
 from pprint import pprint
 from flask import Flask, request
 from flask_restful import Resource, Api
-import matplotlib.pyplot as plt
+from kiteconnect import KiteTicker
 
 sys.path.append("lib")
 from autotrade import History, Collector
@@ -205,7 +205,7 @@ def force_stop(data):
         'status': 'success'
     }
     sys.exit()
-
+    
 def add_strategy(data):
     print(data)
     sm.add_strategy()
