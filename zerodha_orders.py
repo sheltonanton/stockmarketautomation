@@ -216,6 +216,7 @@ def add_strategy(data):
 
 def stop_server(data):
     os.kill(os.getpid(), signal.SIGINT)
+    print("Stopping the server")
     return {
         'handler': 'stop_server',
         'status': 'success'
@@ -246,7 +247,6 @@ def start_ticker(tokens, history, auth='', callback=None):
             tick['lastPrice'] = tick['last_price']
             tick['token'] = tick['instrument_token']
             tick['time'] = int(datetime.now().timestamp())
-            print(tick)
             dataFeed.notify(tick)
 
     def on_connect(ws, response):
