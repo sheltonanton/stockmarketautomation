@@ -309,7 +309,7 @@ const store = (new(function Store() {
   }
   Store.prototype.get = async function (user_id) {
     let trader = this['traders'][user_id];
-    response = trader.isLoggedIn(); //checking if the trader is loggedin
+    response = await trader.isLoggedIn(); //checking if the trader is loggedin
     if (response == null) {
       await trader.login();
     }
@@ -335,6 +335,7 @@ var initializing_promise = (async function () {
 }());
 initializing_promise.catch(function(e){
   console.log("Check your internet connection");
+  console.log(e);
 });
 
 async function getMaster() {
@@ -346,11 +347,11 @@ async function getTrader(user_id) {
 async function getTraders() {
   let traders = []
   let master = null;
-  for (var name in store['traders']) {
-    if (store['traders'][name] == store['master']) {
-      master = store['traders'][name];
+  for (var name in this['traders']) {
+    if (this['traders'][name] == this['master']) {
+      master = this.get(this['traders'][name]);
     } else {
-      traders.push(store['traders'][name]);
+      traders.push(this.get(this['traders'][name]));
     }
   }
   return [master, traders];

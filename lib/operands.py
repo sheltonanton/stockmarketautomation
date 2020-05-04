@@ -143,6 +143,14 @@ class Operand:
     def __str__(self):
         return "({},{})".format(self.p, self.d)
 
+class Default(Operand):
+    def __init__(self, args=[]):
+        self.args = args
+
+    def update(self, d):
+        self.setd(d)
+        return self
+
 class Operation:
     def __init__(self,  operator=None, left_operand=None, right_operand=None, string=None):
         if(string is not None and type(string) is str):
@@ -177,7 +185,9 @@ def create_operation(string=None, data=None, dataline=None):
         if(type(x[0]) is list):
             left = create_operation(data=x[0], dataline=dataline)
         elif(type(x[0]) is dict):
-            l = globals()[operands[x[0]['func']]]
+            l = Default
+            if(operands.get(x[0]['func']) is not None):
+                l = globals()[operands[x[0]['func']]]
             args = x[0]['args'] if x[0]['args'] else []
             left = l(args=args)
             left.dataline = dataline
@@ -185,7 +195,9 @@ def create_operation(string=None, data=None, dataline=None):
         if(len(x) == 3 and type(x[2]) is list):
             right = create_operation(data=x[2], dataline=dataline)
         elif(len(x) == 3 and type(x[2]) is dict):
-            r = globals()[operands[x[2]['func']]]
+            r = Default
+            if(operands.get(x[2]['func']) is not None):
+                r = globals()[operands[x[2]['func']]]
             args = x[2]['args'] if x[2]['args'] else []
             right = r(args=args)
             right.dataline = dataline
